@@ -35,9 +35,9 @@ except ImportError:
 
 # -- Project --------------------------------------------------------------
 
-project = "Zephyr Project"
-copyright = "2015-2023 Zephyr Project members and individual contributors"
-author = "The Zephyr Project Contributors"
+project = "Luzern Project"
+copyright = "2023 Zeiss Meditec AG"
+author = "The Zephyr Project Contributors, Luzern cSW Team"
 
 # parse version from 'VERSION' file
 with open(ZEPHYR_BASE / "VERSION") as f:
@@ -265,7 +265,7 @@ notfound_urls_prefix = f"/{version}/" if is_release else "/latest/"
 # -- Options for zephyr.vcs_link ------------------------------------------
 
 vcs_link_version = f"v{version}" if is_release else "main"
-vcs_link_base_url = f"https://github.com/zephyrproject-rtos/zephyr/blob/{vcs_link_version}"
+vcs_link_base_url = f"https://github.com/ZEISS/zephyr/blob/{vcs_link_version}"
 vcs_link_prefixes = {
     "samples/.*": "",
     "boards/.*": "",
@@ -275,6 +275,7 @@ vcs_link_exclude = [
     "reference/kconfig.*",
     "build/dts/api/bindings.*",
     "build/dts/api/compatibles.*",
+    "boards/*"
 ]
 
 # -- Options for zephyr.kconfig -------------------------------------------
@@ -286,10 +287,12 @@ kconfig_ext_paths = [ZEPHYR_BASE]
 
 external_content_contents = [
     (ZEPHYR_BASE / "doc", "[!_]*"),
-    (ZEPHYR_BASE, "boards/**/*.rst"),
-    (ZEPHYR_BASE, "boards/**/doc"),
+    (ZEPHYR_BASE, "boards/*.rst"),
+    (ZEPHYR_BASE, "boards/arm/*.rst"),
     (ZEPHYR_BASE, "samples/**/*.rst"),
     (ZEPHYR_BASE, "samples/**/doc"),
+    (ZEPHYR_BASE / "../applications/czm-luzern-blueprint" , "boards/**/*.rst"),
+    (ZEPHYR_BASE / "../applications/czm-luzern-blueprint" , "boards/**/doc"),
 ]
 external_content_keep = [
     "reference/kconfig/*",
