@@ -1,0 +1,26 @@
+# Copyright (c) 2023 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+config TMC_SPI
+	bool
+	help
+	    If y, the TMC module uses SPI
+
+config TMC_UART
+    bool
+    help
+        If y, the TMC module uses UART
+
+config TRINAMIC
+    bool
+    help
+        If y, the TRINAMIC module is used
+
+
+if TRINAMIC
+module = TRINAMIC
+module-str = trinamic
+source "subsys/logging/Kconfig.template.log_config"
+endif
+
+source "drivers/misc/trinamic/Kconfig.tmc5041"

@@ -1,0 +1,52 @@
+# Copyright (c) 2022 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+description: TRINAMIC TMC5041
+
+compatible: "trinamic,tmc5041"
+
+include: spi-device.yaml
+
+properties:
+  int-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      Identifies pin for the INT signal on the module. Tristate
+      interrupt output based on ramp generator flags RAMP_STAT
+      bits 4, 5, 6 & 7. Outputs positive active interrupt signal.
+
+  pp-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      Identifies pin for the PP signal on the module. Tristate
+      position compare output for motor 1 (poscmp_enable=1).
+
+  refr1-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      Identifies pin for the REFR1 signal on the module. Right
+      reference switch input for motor 1.
+
+  refl1-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      Identifies pin for the REFR1 signal on the module. Left
+      reference switch input for motor 1.
+
+  refr2-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      Identifies pin for the REFR2 signal on the module. Right
+      reference switch input for motor 2.
+
+  refl2-gpios:
+    type: phandle-array
+    required: false
+    description: |
+      Identifies pin for the REFR2 signal on the module. Left
+      reference switch input for motor 2.

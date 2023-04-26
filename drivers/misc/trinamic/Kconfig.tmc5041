@@ -1,0 +1,29 @@
+# Copyright (c) 2023 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+config TRINAMIC_TMC5041
+	bool "TMC5041 dual controller/driver for up to two 2-phase bipolar stepper motors"
+	default $(dt_compat_enabled,$(DT_COMPACT_TRINAMIC_TMC5041))
+	depends on SPI
+	select TMC_SPI
+	select TRINAMIC
+	help
+	  Enable driver for TMC5041.
+
+config TMC5041_INT
+    bool "TMC5041 interrupt handling support via INT pin"
+    depends on TRINAMIC_TMC5041
+    help
+        When enabled, the TMC5041 can be provided with a interrupt input GPIO to
+        in order to react on a position reached event. In case more than one
+        interrupt source is possible, it is necessary to carefully check for the
+        actual event, without risking losing an event.
+
+config TRINAMIC_TMC5041_SHELL
+	bool "Trinamic TMC5041 shell"
+	depends on TRINAMIC_TMC5041
+	default y if !SHELL_MINIMAL
+	help
+	  This shell provides specialised access to basic trinamic tmc5041 shell to
+	  read/write registers. Here, information about the TMC5041 registers are
+	  accessible.
