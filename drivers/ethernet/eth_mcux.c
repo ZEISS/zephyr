@@ -63,8 +63,8 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define PHY_OMS_FACTORY_MODE_MASK 0x8000U /* The factory mode Override/Status mask. */
 
 /* Defines the PHY KSZ8081 vendor defined registers. */
-#define PHY_CONTROL1_REG 0x1EU /* The PHY control one register. */
-#define PHY_CONTROL2_REG 0x1FU /* The PHY control two register. */
+#define PHY_CONTROL1_REG 0x09U /* The PHY control one register. */
+#define PHY_CONTROL2_REG 0x0AU /* The PHY control two register. */
 
 /* Defines the PHY KSZ8081 ID number. */
 #define PHY_CONTROL_ID1 0x22U /* The PHY ID1 */
@@ -447,7 +447,7 @@ static void eth_mcux_phy_event(struct eth_context *context)
 	status_t res;
 	uint32_t ctrl2;
 #endif
-	phy_duplex_t phy_duplex = kPHY_FullDuplex;
+	phy_duplex_t phy_duplex = kPHY_HalfDuplex;
 	phy_speed_t phy_speed = kPHY_Speed100M;
 
 #if defined(CONFIG_ETH_MCUX_PHY_EXTRA_DEBUG)
@@ -982,7 +982,7 @@ static int eth_phy_reset(const struct device *dev)
 	struct eth_context *context = dev->data;
 
 	/* pull up the ENET_INT before RESET. */
-	err =  gpio_pin_configure_dt(&context->int_gpio, GPIO_OUTPUT_ACTIVE);
+	err =  gpio_pin_configure_dt(&context->int_gpio, GPIO_INPUT);
 	if (err) {
 		return err;
 	}
@@ -995,7 +995,7 @@ static int eth_phy_init(const struct device *dev)
 
 	/* RESET PHY chip. */
 	k_busy_wait(USEC_PER_MSEC * 500);
-	return gpio_pin_set_dt(&context->reset_gpio, 1);
+	return gpio_pin_set_dt(&context->reset_gpio, 0);
 }
 #endif
 
@@ -1559,7 +1559,7 @@ static void eth_mcux_err_isr(const struct device *dev)
 		.base = (ENET_Type *)DT_INST_REG_ADDR(n),		\
 		.config_func = eth##n##_config_func,			\
 		.phy_addr = DT_INST_PROP(n, phy_addr),		\
-		.phy_duplex = kPHY_FullDuplex,				\
+		.phy_duplex = kPHY_HalfDuplex,				\
 		.phy_speed = kPHY_Speed100M,				\
 		.phy_handle = &eth##n##_phy_handle,			\
 		.tx_frame_buf = tx_enet_frame_##n##_buf,		\
