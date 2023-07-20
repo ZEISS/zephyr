@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache 2.0
+
+description: ADLTC2990 Quad I2C Voltage, Current and Temperature Monitor
+
+compatible: "adi,ltc2990"
+
+include: [sensor-device.yaml,i2c-device.yaml]
+
+properties:
+  reg:
+    required: true
