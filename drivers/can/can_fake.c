@@ -15,6 +15,13 @@
 
 #define DT_DRV_COMPAT zephyr_fake_can
 
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+/* Internal data structure to capture things of interest */
+struct fake_can_data {
+	struct k_msgq *rx_msgq; /* Receiver side message queue added via can_add_rx_filter */
+};
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
+
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_start, const struct device *);
 
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_stop, const struct device *);
@@ -31,9 +38,6 @@ DEFINE_FAKE_VALUE_FUNC(int, fake_can_set_mode, const struct device *, can_mode_t
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_send, const struct device *, const struct can_frame *,
 		       k_timeout_t, can_tx_callback_t, void *);
 
-DEFINE_FAKE_VALUE_FUNC(int, fake_can_add_rx_filter, const struct device *, can_rx_callback_t,
-		       void *, const struct can_filter *);
-
 DEFINE_FAKE_VOID_FUNC(fake_can_remove_rx_filter, const struct device *, int);
 
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_recover, const struct device *, k_timeout_t);
@@ -46,7 +50,30 @@ DEFINE_FAKE_VOID_FUNC(fake_can_set_state_change_callback, const struct device *,
 
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_get_max_filters, const struct device *, bool);
 
-#ifdef CONFIG_ZTEST_NEW_API
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+int fake_can_add_rx_filter(const struct device *dev, can_rx_callback_t callback, void *user_data,
+			   const struct can_filter *filter)
+{
+	ARG_UNUSED(filter);
+
+	struct fake_can_data *data = dev->data;
+
+	data->rx_msgq = (struct k_msgq *)user_data;
+	return 0;
+}
+
+int inject_can_frame_to_recv_msgq(const struct device *dev, const struct can_frame *frame)
+{
+	struct fake_can_data *data = dev->data;
+
+	return k_msgq_put(data->rx_msgq, frame, K_FOREVER);
+}
+#else
+DEFINE_FAKE_VALUE_FUNC(int, fake_can_add_rx_filter, const struct device *, can_rx_callback_t,
+		       void *, const struct can_filter *);
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
+
+#if (defined (CONFIG_ZTEST_NEW_API) && !defined (CONFIG_CAN_FAKE_DISABLE_FAKES_RESET))
 static void fake_can_reset_rule_before(const struct ztest_unit_test *test, void *fixture)
 {
 	ARG_UNUSED(test);
@@ -59,7 +86,10 @@ static void fake_can_reset_rule_before(const struct ztest_unit_test *test, void 
 	RESET_FAKE(fake_can_set_timing);
 	RESET_FAKE(fake_can_set_timing_data);
 	RESET_FAKE(fake_can_send);
+#if CONFIG_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+	/* When this config is enabled, a custom function is used. */
 	RESET_FAKE(fake_can_add_rx_filter);
+#endif /* CONFIG_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
 	RESET_FAKE(fake_can_remove_rx_filter);
 	RESET_FAKE(fake_can_get_state);
 	RESET_FAKE(fake_can_recover);
@@ -68,7 +98,7 @@ static void fake_can_reset_rule_before(const struct ztest_unit_test *test, void 
 }
 
 ZTEST_RULE(fake_can_reset_rule, fake_can_reset_rule_before, NULL);
-#endif /* CONFIG_ZTEST_NEW_API */
+#endif /* CONFIG_ZTEST_NEW_API & !CONFIG_CAN_FAKE_DISABLE_FAKES_RESET*/
 
 static int fake_can_get_core_clock(const struct device *dev, uint32_t *rate)
 {
@@ -87,6 +117,7 @@ static int fake_can_get_max_bitrate(const struct device *dev, uint32_t *max_bitr
 
 	return 0;
 }
+
 
 static const struct can_driver_api fake_can_driver_api = {
 	.start = fake_can_start,
@@ -138,9 +169,16 @@ static const struct can_driver_api fake_can_driver_api = {
 #endif /* CONFIG_CAN_FD_MODE */
 };
 
+
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+#define FAKE_CAN_INIT(inst)                                                                        \
+	static struct fake_can_data fake_can_data_##inst;                                          \
+	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &fake_can_data_##inst, NULL, POST_KERNEL,          \
+			      CONFIG_CAN_INIT_PRIORITY, &fake_can_driver_api);
+#else
 #define FAKE_CAN_INIT(inst)						\
 	DEVICE_DT_INST_DEFINE(inst, NULL, NULL, NULL, NULL, POST_KERNEL,\
 			      CONFIG_CAN_INIT_PRIORITY,			\
 			      &fake_can_driver_api);
-
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
 DT_INST_FOREACH_STATUS_OKAY(FAKE_CAN_INIT)
