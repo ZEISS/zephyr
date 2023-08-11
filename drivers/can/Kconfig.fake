@@ -9,3 +9,25 @@ config CAN_FAKE
 	depends on DT_HAS_ZEPHYR_FAKE_CAN_ENABLED
 	help
 	  Enable support for the FFF-based fake CAN driver.
+
+if CAN_FAKE
+config CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+	bool "Allow injection of messages into RX queue"
+	depends on CAN_FAKE
+	default n
+	help
+	  Enabling this config allows for injection of messages
+	  into the RX message queue using the
+	  `inject_can_frame_to_recv_msgq` function.
+
+config CAN_FAKE_DISABLE_FAKES_RESET
+	bool "Disable resetting of fakes"
+	depends on CAN_FAKE
+	default n
+	help
+	  Typically the fakes are reset during tests. If the CAN fake driver
+	  is used for testing a subsystem which uses a can driver, it would
+	  be interesting to check if the relevant functions are called. This
+	  flag would disable resetting the fake call counter.
+
+endif # CAN_FAKE
