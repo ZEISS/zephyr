@@ -22,7 +22,11 @@ struct fake_can_config {
 
 struct fake_can_data {
 	struct can_driver_data common;
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+	struct k_msgq *rx_msgq; /* Receiver side message queue added via can_add_rx_filter */
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */	
 };
+
 
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_start, const struct device *);
 
@@ -39,9 +43,6 @@ DEFINE_FAKE_VALUE_FUNC(int, fake_can_set_mode, const struct device *, can_mode_t
 
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_send, const struct device *, const struct can_frame *,
 		       k_timeout_t, can_tx_callback_t, void *);
-
-DEFINE_FAKE_VALUE_FUNC(int, fake_can_add_rx_filter, const struct device *, can_rx_callback_t,
-		       void *, const struct can_filter *);
 
 DEFINE_FAKE_VOID_FUNC(fake_can_remove_rx_filter, const struct device *, int);
 
@@ -67,6 +68,29 @@ static int fake_can_get_core_clock_delegate(const struct device *dev, uint32_t *
 	return 0;
 }
 
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+int fake_can_add_rx_filter(const struct device *dev, can_rx_callback_t callback, void *user_data,
+			   const struct can_filter *filter)
+{
+	ARG_UNUSED(filter);
+
+	struct fake_can_data *data = dev->data;
+
+	data->rx_msgq = (struct k_msgq *)user_data;
+	return 0;
+}
+
+int inject_can_frame_to_recv_msgq(const struct device *dev, const struct can_frame *frame)
+{
+	struct fake_can_data *data = dev->data;
+
+	return k_msgq_put(data->rx_msgq, frame, K_FOREVER);
+}
+#else
+DEFINE_FAKE_VALUE_FUNC(int, fake_can_add_rx_filter, const struct device *, can_rx_callback_t,
+		       void *, const struct can_filter *);
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
+
 #ifdef CONFIG_ZTEST
 static void fake_can_reset_rule_before(const struct ztest_unit_test *test, void *fixture)
 {
@@ -80,7 +104,10 @@ static void fake_can_reset_rule_before(const struct ztest_unit_test *test, void 
 	RESET_FAKE(fake_can_set_timing);
 	RESET_FAKE(fake_can_set_timing_data);
 	RESET_FAKE(fake_can_send);
+#if CONFIG_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+	/* When this config is enabled, a custom function is used. */
 	RESET_FAKE(fake_can_add_rx_filter);
+#endif /* CONFIG_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
 	RESET_FAKE(fake_can_remove_rx_filter);
 	RESET_FAKE(fake_can_get_state);
 	RESET_FAKE(fake_can_recover);
