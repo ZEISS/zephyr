@@ -45,6 +45,10 @@ DECLARE_FAKE_VOID_FUNC(fake_can_set_state_change_callback, const struct device *
 
 DECLARE_FAKE_VALUE_FUNC(int, fake_can_get_max_filters, const struct device *, bool);
 
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+int inject_can_frame_to_recv_msgq(const struct device *dev, const struct can_frame *frame);
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
+
 #ifdef __cplusplus
 }
 #endif
