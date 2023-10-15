@@ -5,6 +5,7 @@
 
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/emul.h>
+#include <zephyr/drivers/emul_sensor.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/ztest.h>
@@ -26,6 +27,20 @@
 		sensor_val[index].val1 + (double)sensor_val[index].val2 / 1000000,                 \
 		(pin_voltage - 0.01f) * ((r1 + r2) / (float)r2),                                   \
 		(pin_voltage + 0.01f) * ((r1 + r2) / (float)r2), pin_voltage, r1, r2);
+
+#define _CHECK_SINGLE_ENDED_VOLTAGE(sensor_val, index, pin_voltage, epsilon, r1, r2)               \
+	zassert_ok(sensor_sample_fetch_chan(fixture->dev, SENSOR_CHAN_VOLTAGE));                   \
+	zassert_ok(sensor_channel_get(fixture->dev, SENSOR_CHAN_VOLTAGE, sensor_val));             \
+	zassert_between_inclusive(                                                                 \
+		sensor_val[index].val1 + (double)sensor_val[index].val2 / 1000000,                 \
+		(pin_voltage - epsilon / (float)1000000) * ((r1 + r2) / (float)r2),                \
+		(pin_voltage + epsilon / (float)1000000) * ((r1 + r2) / (float)r2),                \
+		"%f Out of Range [%f,%f] input %f, [%dmΩ, %dmΩ] "                                \
+		"\nCheck if the sensor node is configured correctly",                              \
+		sensor_val[index].val1 + (double)sensor_val[index].val2 / 1000000,                 \
+		(pin_voltage - epsilon / (float)1000000) * ((r1 + r2) / (float)r2),                \
+		(pin_voltage + epsilon / (float)1000000) * ((r1 + r2) / (float)r2), pin_voltage,   \
+		r1, r2);
 
 #define CHECK_CURRENT(sensor_val, index, pin_voltage, r_microohms)                                 \
 	zassert_ok(sensor_sample_fetch_chan(fixture->dev, SENSOR_CHAN_CURRENT));                   \
@@ -95,7 +110,29 @@ ZTEST_F(adltc2990_1_3, test_die_temperature)
 	adltc2990_emul_set_reg(fixture->target, ADLTC2990_REG_INTERNAL_TEMP_LSB, &lsb);
 
 	CHECK_TEMPERATURE(temp_value, 0, -40.00, SENSOR_CHAN_DIE_TEMP);
+
+	int32_t lower = {0}, upper = {0}, epsilon = {0};
+	int8_t shift = {0};
+
+	emul_sensor_backend_get_sample_range(fixture->target, SENSOR_CHAN_DIE_TEMP, &lower, &upper,
+					     &epsilon, &shift);
+
+	printk("Gettig sample tange %d %d %d", lower, upper, epsilon);
+	struct sensor_value get_die_temp[1], set_die_temp[1];
+
+	for (int32_t temp = lower; temp <= upper; temp += epsilon) {
+		emul_sensor_backend_set_channel(fixture->target, SENSOR_CHAN_DIE_TEMP, temp, 0);
+		sensor_sample_fetch_chan(fixture->target->dev, SENSOR_CHAN_DIE_TEMP);
+		sensor_channel_get(fixture->target->dev, SENSOR_CHAN_DIE_TEMP, get_die_temp);
+		set_die_temp[0].val1 = temp / 1000000;
+		set_die_temp[0].val2 = temp % 1000000;
+		printk("\nDie Temp is %d.%06d", set_die_temp[0].val1, set_die_temp[0].val2);
+		CHECK_TEMPERATURE(get_die_temp, 0,
+				  set_die_temp[0].val1 + (float)set_die_temp[0].val2 / 1000000,
+				  SENSOR_CHAN_DIE_TEMP);
+	}
 }
+
 ZTEST_F(adltc2990_1_3, test_ambient_temperature)
 {
 	/* 0b00000001 0b10010001 +25.0625 */
@@ -154,6 +191,27 @@ ZTEST_F(adltc2990_1_3, test_V1_MINUS_V2_VCC)
 	test_value = voltage_values[1].val1 + (double)voltage_values[1].val2 / 1000000;
 	zassert_between_inclusive(test_value, 2.69, 2.7, "Out of Range [2.69, 2.7]%.6f",
 				  test_value);
+
+	int32_t lower = {0}, upper = {0}, epsilon = {0};
+	int8_t shift = {0};
+
+	emul_sensor_backend_get_sample_range(fixture->target, SENSOR_CHAN_VOLTAGE, &lower, &upper,
+					     &epsilon, &shift);
+
+	printk("Gettig sample tange %d %d %d", lower, upper, epsilon);
+	struct sensor_value get_vcc[5], set_vcc[1];
+
+	for (int32_t temp = upper; temp >= lower; temp -= epsilon) {
+		emul_sensor_backend_set_channel(fixture->target, SENSOR_CHAN_VOLTAGE, temp, 0);
+		sensor_sample_fetch_chan(fixture->target->dev, SENSOR_CHAN_VOLTAGE);
+		sensor_channel_get(fixture->target->dev, SENSOR_CHAN_VOLTAGE, get_vcc);
+		set_vcc[0].val1 = temp / 1000000;
+		set_vcc[0].val2 = temp % 1000000;
+		printk("\nVoltage %d.%06d", set_vcc[0].val1, set_vcc[0].val2);
+		_CHECK_SINGLE_ENDED_VOLTAGE(get_vcc, 0,
+					    (set_vcc[0].val1 + (double)set_vcc[0].val2 / 1000000),
+					    epsilon + 1, 0, 1);
+	}
 }
 
 /*** TEST-SUITE: ADLTC2990 Measurement Mode 5 3***/
@@ -310,6 +368,27 @@ ZTEST_F(adltc2990_7_3, test_die_temperature)
 	struct sensor_value die_temp_value[1];
 
 	CHECK_TEMPERATURE(die_temp_value, 0, 398.1250, SENSOR_CHAN_DIE_TEMP);
+
+	int32_t lower = {0}, upper = {0}, epsilon = {0};
+	int8_t shift = {0};
+
+	emul_sensor_backend_get_sample_range(fixture->target, SENSOR_CHAN_DIE_TEMP, &lower, &upper,
+					     &epsilon, &shift);
+
+	printk("Gettig sample tange %d %d %d", lower, upper, epsilon);
+
+	struct sensor_value get_die_temp[1], set_die_temp[1];
+
+	for (int32_t temp = lower; temp <= upper; temp += epsilon) {
+		emul_sensor_backend_set_channel(fixture->target, SENSOR_CHAN_DIE_TEMP, temp, 0);
+		sensor_sample_fetch_chan(fixture->target->dev, SENSOR_CHAN_DIE_TEMP);
+		sensor_channel_get(fixture->target->dev, SENSOR_CHAN_DIE_TEMP, get_die_temp);
+		set_die_temp[0].val1 = temp / 1000000;
+		set_die_temp[0].val2 = temp % 1000000;
+		CHECK_TEMPERATURE(get_die_temp, 0,
+				  set_die_temp[0].val1 + (float)set_die_temp[0].val2 / 1000000,
+				  SENSOR_CHAN_DIE_TEMP);
+	}
 }
 
 ZTEST_F(adltc2990_7_3, test_V1_V2_V3_V4_VCC)
@@ -369,4 +448,25 @@ ZTEST_F(adltc2990_7_3, test_V1_V2_V3_V4_VCC)
 	zassert_between_inclusive(test_value, 6.0, 6.1, "Out of Range [6.0,6.1] %.6f", test_value);
 
 	zassert_equal(6, voltage_values[4].val1);
+
+	int32_t lower = {0}, upper = {0}, epsilon = {0};
+	int8_t shift = {0};
+
+	emul_sensor_backend_get_sample_range(fixture->target, SENSOR_CHAN_VOLTAGE, &lower, &upper,
+					     &epsilon, &shift);
+
+	printk("Gettig sample tange %d %d %d", lower, upper, epsilon);
+	struct sensor_value get_vcc[5], set_vcc[1];
+
+	for (int32_t temp = upper; temp >= lower; temp -= epsilon) {
+		emul_sensor_backend_set_channel(fixture->target, SENSOR_CHAN_VOLTAGE, temp, 0);
+		sensor_sample_fetch_chan(fixture->target->dev, SENSOR_CHAN_VOLTAGE);
+		sensor_channel_get(fixture->target->dev, SENSOR_CHAN_VOLTAGE, get_vcc);
+		set_vcc[0].val1 = temp / 1000000;
+		set_vcc[0].val2 = temp % 1000000;
+		printk("\nVoltage %d.%06d", set_vcc[0].val1, set_vcc[0].val2);
+		_CHECK_SINGLE_ENDED_VOLTAGE(
+			get_vcc, 4, (set_vcc[0].val1 + (double)set_vcc[0].val2 / 1000000) + 2.5,
+			epsilon + 1, 0, 1);
+	}
 }

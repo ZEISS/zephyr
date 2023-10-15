@@ -14,8 +14,8 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(adltc2990, CONFIG_SENSOR_LOG_LEVEL);
 
-static enum adltc2990_monitoring_type adltc2990_get_v1_v2_measurement_modes(uint8_t mode_4_3,
-									    uint8_t mode_2_0)
+enum adltc2990_monitoring_type adltc2990_get_v1_v2_measurement_modes(uint8_t mode_4_3,
+								     uint8_t mode_2_0)
 {
 	if (mode_2_0 > ADLTC2990_MODE_2_0_MAX_VALUE || mode_4_3 > ADLTC2990_MODE_4_3_MAX_VALUE) {
 		LOG_ERR("Invalid Measurement Mode");
@@ -53,8 +53,8 @@ static enum adltc2990_monitoring_type adltc2990_get_v1_v2_measurement_modes(uint
 	return type;
 }
 
-static enum adltc2990_monitoring_type adltc2990_get_v3_v4_measurement_modes(uint8_t mode_4_3,
-									    uint8_t mode_2_0)
+enum adltc2990_monitoring_type adltc2990_get_v3_v4_measurement_modes(uint8_t mode_4_3,
+								     uint8_t mode_2_0)
 {
 	if (mode_2_0 > ADLTC2990_MODE_2_0_MAX_VALUE || mode_4_3 > ADLTC2990_MODE_4_3_MAX_VALUE) {
 		LOG_ERR("Invalid Measurement Mode");
