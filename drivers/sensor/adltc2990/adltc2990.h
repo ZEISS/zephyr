@@ -1,6 +1,5 @@
 /*
  * SPDX-FileCopyrightText: Copyright (c) 2023 Carl Zeiss Meditec AG
- *
  * SPDX-License-Identifier: Apache-2.0
  */
 
