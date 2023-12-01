@@ -9,6 +9,7 @@ import os
 
 import pytest
 
+from twister_harness.argument_handler import ArgumentHandler
 from twister_harness.twister_harness_config import TwisterHarnessConfig
 
 logger = logging.getLogger(__name__)
