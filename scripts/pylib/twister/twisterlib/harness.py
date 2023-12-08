@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
+
+import abc
 from asyncio.log import logger
 import platform
 import re
@@ -51,6 +53,7 @@ class Harness:
         self.regex = []
         self.matches = OrderedDict()
         self.ordered = True
+        self.repeat = 1
         self.id = None
         self.fail_on_fault = True
         self.fault = False
@@ -327,9 +330,10 @@ class Console(Harness):
             tc.status = "failed"
 
 
-class PytestHarnessException(Exception):
-    """General exception for pytest."""
+class TwisterLibraryHarnessException(Exception):
+    """General exception for twister library harness usage."""
 
+class TwisterLibraryHarness(Harness, abc.ABC):
 
 class Pytest(Harness):
 
@@ -460,7 +464,7 @@ class Pytest(Harness):
 
         return command
 
-    def run_command(self, cmd, timeout):
+    def run_command(self, cmd, timeout) -> None:
         cmd, env = self._update_command_with_env_dependencies(cmd)
         with subprocess.Popen(
             cmd,
@@ -469,7 +473,7 @@ class Pytest(Harness):
             env=env
         ) as proc:
             try:
-                reader_t = threading.Thread(target=self._output_reader, args=(proc, self), daemon=True)
+                reader_t = threading.Thread(target=self._output_reader, args=(proc,), daemon=True)
                 reader_t.start()
                 reader_t.join(timeout)
                 if reader_t.is_alive():
@@ -491,7 +495,6 @@ class Pytest(Harness):
         '''
         env = os.environ.copy()
         if not PYTEST_PLUGIN_INSTALLED:
-            cmd.extend(['-p', 'twister_harness.plugin'])
             pytest_plugin_path = os.path.join(ZEPHYR_BASE, 'scripts', 'pylib', 'pytest-twister-harness', 'src')
             env['PYTHONPATH'] = pytest_plugin_path + os.pathsep + env.get('PYTHONPATH', '')
             if _WINDOWS:
@@ -566,6 +569,74 @@ class Pytest(Harness):
         else:
             self.state = 'skipped'
             self.instance.reason = 'No tests collected'
+
+
+class Robotframework(TwisterLibraryHarness):
+
+    def configure(self, instance: TestInstance):
+        super(Robotframework, self)._configure(instance, "robot", 'robot_report.xml', 'robot.html')
+
+    def _get_base_command(self):
+        assert False, "Implement me"
+
+    def _add_toolspecific_flags(self, handler: Handler, command: list[str]) -> None:
+        assert False, "Implement me"
+
+class PytestHarnessException(TwisterLibraryHarnessException):
+    """General exception for pytest."""
+
+class Pytest(TwisterLibraryHarness):
+
+    def configure(self, instance: TestInstance):
+        super(Pytest, self)._configure(instance, "pytest", 'report.xml', 'twister_harness.log')
+
+
+    def pytest_run(self, timeout):
+        self._run(timeout)
+
+    def _get_base_command(self):
+        command = [
+            'pytest',
+            '--twister-harness',
+            '-s', '-v',
+            f'--build-dir={self.running_dir}',
+            f'--junit-xml={self.report_file}',
+            '--log-file-level=DEBUG',
+            '--log-file-format=%(asctime)s.%(msecs)d:%(levelname)s:%(name)s: %(message)s',
+            f'--log-file={self.log_file_path}'
+        ]
+        return command
+
+    def _add_toolspecific_flags(self, handler: Handler, command: list[str]):
+        config = self.instance.testsuite.harness_config
+        pytest_root = config.get('pytest_root', ['pytest']) if config else ['pytest']
+        pytest_args_yaml = config.get('pytest_args', []) if config else []
+        pytest_dut_scope = config.get('pytest_dut_scope', None) if config else None
+
+        command.extend([os.path.normpath(os.path.join(
+            self.source_dir, os.path.expanduser(os.path.expandvars(src)))) for src in pytest_root])
+
+        if handler.options.pytest_args:
+            command.extend(handler.options.pytest_args)
+            if pytest_args_yaml:
+                logger.warning(f'The pytest_args ({handler.options.pytest_args}) specified '
+                               'in the command line will override the pytest_args defined '
+                               f'in the YAML file {pytest_args_yaml}')
+        else:
+            command.extend(pytest_args_yaml)
+
+        if pytest_dut_scope:
+            command.append(f'--dut-scope={pytest_dut_scope}')
+
+        if handler.options.verbose > 1:
+            command.extend([
+                '--log-cli-level=DEBUG',
+                '--log-cli-format=%(levelname)s: %(message)s'
+            ])
+
+        if not PYTEST_PLUGIN_INSTALLED:
+            command.extend(['-p', 'twister_harness.plugin'])
+
 
 
 class Gtest(Harness):
@@ -766,6 +837,7 @@ class Bsim(Harness):
             new_exe_name = f'bs_{self.instance.platform.name}_{new_exe_name}'
         else:
             new_exe_name = self.instance.name
+            new_exe_name = new_exe_name.replace(os.path.sep, '_').replace('.', '_')
             new_exe_name = f'bs_{new_exe_name}'
 
         new_exe_name = new_exe_name.replace(os.path.sep, '_').replace('.', '_').replace('@', '_')
