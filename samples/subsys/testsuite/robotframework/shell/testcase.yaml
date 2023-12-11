@@ -1,0 +1,18 @@
+#
+# SPDX-FileCopyrightText: Copyright (c) 2024 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+#
+
+tests:
+  sample.robot.shell:
+    filter: CONFIG_SERIAL and dt_chosen_enabled("zephyr,shell-uart")
+    min_ram: 40
+    harness: robotframework
+    extra_configs:
+      - arch:posix:CONFIG_NATIVE_UART_0_ON_STDINOUT=y
+    integration_platforms:
+      - native_posix
+    tags:
+      - test_framework
+      - robot
+      - shell
