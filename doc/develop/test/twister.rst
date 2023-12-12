@@ -459,6 +459,7 @@ harness: <string>
     - pytest
     - gtest
     - robot
+    - robotframework
 
     Harnesses ``ztest``, ``gtest`` and ``console`` are based on parsing of the
     output and matching certain phrases. ``ztest`` and ``gtest`` harnesses look
@@ -467,7 +468,9 @@ harness: <string>
     not wish to update them to zTest. The ``console`` harness tells Twister to
     parse a test's text output for a regex defined in the test's YAML file.
     The ``robot`` harness is used to execute Robot Framework test suites
-    in the Renode simulation framework.
+    in the Renode simulation framework. The ``robotframework`` harness can be used
+    to execute arbitrary Robot Framework test suites on the hardware
+    in an emulation environment.
 
     Some widely used harnesses that are not supported yet:
 
@@ -629,6 +632,10 @@ harness_config: <harness configuration options>
 
     robot_option: <robot option> (default empty)
         One or more options to be send to robotframework.
+
+    robot_args: <list of arguments> (default empty)
+        Specify a list of additional arguments to pass to ``robot``. Only used in
+        ``robotframework`` harness.
 
     bsim_exe_name: <string>
         If provided, the executable filename when copying to BabbleSim's bin
@@ -1425,7 +1432,8 @@ Robot Framework Tests
 Zephyr supports `Robot Framework <https://robotframework.org/>`_ as one of solutions for automated testing.
 
 Robot files allow you to express interactive test scenarios in human-readable text format and execute them in simulation or against hardware.
-At this moment Zephyr integration supports running Robot tests in the `Renode <https://renode.io/>`_ simulation framework.
+At this moment Zephyr integration supports running Robot tests with hardware, in an emulated environment,
+or in the `Renode <https://renode.io/>`_ simulation framework.
 
 To execute a Robot test suite with twister, run the following command:
 
