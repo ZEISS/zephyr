@@ -459,6 +459,7 @@ harness: <string>
     - pytest
     - gtest
     - robot
+    - robotframework
 
     Harnesses ``ztest``, ``gtest`` and ``console`` are based on parsing of the
     output and matching certain phrases. ``ztest`` and ``gtest`` harnesses look
@@ -467,7 +468,9 @@ harness: <string>
     not wish to update them to zTest. The ``console`` harness tells Twister to
     parse a test's text output for a regex defined in the test's YAML file.
     The ``robot`` harness is used to execute Robot Framework test suites
-    in the Renode simulation framework.
+    in the Renode simulation framework. The ``robotframework`` harness can be used
+    to execute arbitrary Robot Framework test suites on the hardware
+    in an emulation environment.
 
     Some widely used harnesses that are not supported yet:
 
@@ -629,6 +632,10 @@ harness_config: <harness configuration options>
 
     robot_option: <robot option> (default empty)
         One or more options to be send to robotframework.
+
+    robot_args: <list of arguments> (default empty)
+        Specify a list of additional arguments to pass to ``robot``. Only used in
+        ``robotframework`` harness.
 
     bsim_exe_name: <string>
         If provided, the executable filename when copying to BabbleSim's bin
@@ -1442,6 +1449,12 @@ To execute a Robot test suite with twister, run the following command:
       .. code-block:: bat
 
          python .\scripts\twister --platform hifive1 --test samples/subsys/shell/shell_module/sample.shell.shell_module.robot
+
+For the ``robot`` harness with Renode, it's also possible to run it by `west` directly, with:
+
+.. code-block:: bash
+
+   $ ROBOT_FILES=shell_module.robot west build -p -b hifive1 -s samples/subsys/shell/shell_module -t run_renode_test
 
 Writing Robot tests
 ===================
