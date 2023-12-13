@@ -106,6 +106,12 @@ enum sensor_channel {
 	SENSOR_CHAN_GREEN,
 	/** Illuminance in blue spectrum, in lux. */
 	SENSOR_CHAN_BLUE,
+	/** Illuminance in visible spectrum, in relation to Y */
+	SENSOR_CHAN_VISION_X,
+	/** Illuminance in visible spectrum, in relation to Y=100 is maximum brightness */
+	SENSOR_CHAN_VISION_Y,
+	/** Illuminance in visible spectrum, in relation to Y */
+	SENSOR_CHAN_VISION_Z,
 	/** Altitude, in meters */
 	SENSOR_CHAN_ALTITUDE,
 
