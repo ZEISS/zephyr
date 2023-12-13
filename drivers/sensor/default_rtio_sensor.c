@@ -339,6 +339,9 @@ int sensor_natively_supported_channel_size_info(enum sensor_channel channel, siz
 	case SENSOR_CHAN_PRESS:
 	case SENSOR_CHAN_HUMIDITY:
 	case SENSOR_CHAN_LIGHT:
+	case SENSOR_CHAN_VISION_X:
+	case SENSOR_CHAN_VISION_Y:
+	case SENSOR_CHAN_VISION_Z:
 	case SENSOR_CHAN_IR:
 	case SENSOR_CHAN_RED:
 	case SENSOR_CHAN_GREEN:
@@ -474,9 +477,8 @@ static int decode(const uint8_t *buffer, enum sensor_channel channel, size_t cha
 {
 	const struct sensor_data_generic_header *header =
 		(const struct sensor_data_generic_header *)buffer;
-	const q31_t *q =
-		(const q31_t *)(buffer + sizeof(struct sensor_data_generic_header) +
-				header->num_channels * sizeof(enum sensor_channel));
+	const q31_t *q = (const q31_t *)(buffer + sizeof(struct sensor_data_generic_header) +
+					 header->num_channels * sizeof(enum sensor_channel));
 	int count = 0;
 
 	if (*fit != 0 || max_count < 1) {
@@ -517,6 +519,9 @@ static int decode(const uint8_t *buffer, enum sensor_channel channel, size_t cha
 	case SENSOR_CHAN_PRESS:
 	case SENSOR_CHAN_HUMIDITY:
 	case SENSOR_CHAN_LIGHT:
+	case SENSOR_CHAN_VISION_X:
+	case SENSOR_CHAN_VISION_Y:
+	case SENSOR_CHAN_VISION_Z:
 	case SENSOR_CHAN_IR:
 	case SENSOR_CHAN_RED:
 	case SENSOR_CHAN_GREEN:
