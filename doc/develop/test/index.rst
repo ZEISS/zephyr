@@ -10,6 +10,7 @@ Testing
    twister
    twister/twister_blackbox
    pytest
+   robot
    coverage
    BabbleSim<bsim>
    ztest_deprecated
