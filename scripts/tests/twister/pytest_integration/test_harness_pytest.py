@@ -5,14 +5,11 @@ from __future__ import annotations
 import pytest
 import textwrap
 
-from unittest import mock
+
 from pathlib import Path
 
 from twisterlib.harness import Pytest
-from twisterlib.testsuite import TestSuite
 from twisterlib.testinstance import TestInstance
-from twisterlib.platform import Platform
-
 
 @pytest.fixture
 def testinstance() -> TestInstance:
