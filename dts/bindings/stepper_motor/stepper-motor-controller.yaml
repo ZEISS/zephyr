@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+description: Stepper Motor Controller
+
+include: base.yaml
+
+child-binding:
+  description: Stepper Motor
+  properties:
+    reg:
+      type: int
+      description: stepper motor index
+
+    gear-ratio:
+      type: string
+      default: "1.0"
+      description: |
+        Gear ratio from stepper motor to end transmission, This value can be in float and hence
+        the property type string
+
+    micro-step-res:
+      type: int
+      enum:
+        - 1
+        - 2
+        - 4
+        - 8
+        - 16
+        - 32
+        - 64
+        - 128
+        - 256
+      description: |
+        Enter the microstep resolution from one of the enum values
+
+    steps-per-revolution:
+      type: int
+      description: |
+        Full steps per revolution, a default value of 200 signifies that 1 step rotates the shaft
+        by 1.8°, which is the case in lot of stepper motors

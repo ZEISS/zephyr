@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig STEPPER_MOTOR
+	bool "Stepper Motor"
+	help
+		Enable stepper motor
+
+if STEPPER_MOTOR
+
+module = STEPPER_MOTOR
+module-str = stepper_motor
+source "subsys/logging/Kconfig.template.log_config"
+
+config STEPPER_MOTOR_INIT_PRIORITY
+	int "Stepper Motor init priority"
+	default 90
+	help
+	  Stepper motor initialization priority.
+
+config STEPPER_MOTOR_SHELL
+	bool "Shell for stepper motor control"
+	depends on SHELL
+	default y if !SHELL_MINIMAL
+	help
+	  This shell provides specialised access to basic stepper motor device shell
+	  to execute various functions.
+
+comment "Stepper Motor Drivers"
+
+source "drivers/stepper_motor/tmc5041/Kconfig"
+
+endif
