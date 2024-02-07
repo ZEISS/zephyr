@@ -13,7 +13,6 @@ properties:
       to CONFIG_CAN_DEFAULT_BITRATE_DATA.
   sample-point-data:
     type: int
-    required: true
     description: |
       Initial data phase sample point in per mille (e.g. 875 equals 87.5%).
   tx-delay-comp-offset:
