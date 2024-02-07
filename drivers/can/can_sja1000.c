@@ -378,6 +378,8 @@ int can_sja1000_send(const struct device *dev, const struct can_frame *frame, k_
 	uint8_t cmr;
 	uint8_t sr;
 
+	__ASSERT_NO_MSG(callback != NULL);
+
 	if (frame->dlc > CAN_MAX_DLC) {
 		LOG_ERR("TX frame DLC %u exceeds maximum (%d)", frame->dlc, CAN_MAX_DLC);
 		return -EINVAL;
@@ -471,7 +473,7 @@ void can_sja1000_remove_rx_filter(const struct device *dev, int filter_id)
 	}
 }
 
-#ifdef CONFIG_CAN_MANUAL_RECOVERY_MODE
+#ifndef CONFIG_CAN_AUTO_BUS_OFF_RECOVERY
 int can_sja1000_recover(const struct device *dev, k_timeout_t timeout)
 {
 	struct can_sja1000_data *data = dev->data;
@@ -481,10 +483,6 @@ int can_sja1000_recover(const struct device *dev, k_timeout_t timeout)
 
 	if (!data->common.started) {
 		return -ENETDOWN;
-	}
-
-	if ((data->common.mode & CAN_MODE_MANUAL_RECOVERY) == 0U) {
-		return -ENOTSUP;
 	}
 
 	sr = can_sja1000_read_reg(dev, CAN_SJA1000_SR);
