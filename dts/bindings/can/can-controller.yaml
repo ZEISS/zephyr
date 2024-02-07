@@ -18,6 +18,7 @@ properties:
       CONFIG_CAN_DEFAULT_BITRATE.
   sample-point:
     type: int
+    required: true
     description: |
       Initial sample point in per mille (e.g. 875 equals 87.5%).
 

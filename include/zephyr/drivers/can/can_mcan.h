@@ -1297,6 +1297,7 @@ struct can_mcan_config {
 		.mram_elements = CAN_MCAN_DT_MRAM_ELEMENTS_GET(node_id),                           \
 		.mram_offsets = CAN_MCAN_DT_MRAM_OFFSETS_GET(node_id),                             \
 		.mram_size = CAN_MCAN_DT_MRAM_ELEMENTS_SIZE(node_id),                              \
+		.tx_delay_comp_offset = DT_PROP(node_id, tx_delay_comp_offset),                    \
 		.custom = _custom,                                                                 \
 	}
 #else /* CONFIG_CAN_FD_MODE */
