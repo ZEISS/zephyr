@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+description: GPIO STEPPER MOTOR CONTROLLER
+
+compatible: "gpio-stepper-motor-controller"
+
+include: [stepper-motor-controller.yaml]
+
+properties:
+  gpios:
+    type: phandle-array
+    required: true
+    description: |
+      The gpio pin  on which the in1 is to be connected

@@ -28,6 +28,7 @@ config STEPPER_MOTOR_SHELL
 
 comment "Stepper Motor Drivers"
 
+source "drivers/stepper_motor/gpio_stepper_motor_controller/Kconfig"
 source "drivers/stepper_motor/tmc5041/Kconfig"
 
 endif
