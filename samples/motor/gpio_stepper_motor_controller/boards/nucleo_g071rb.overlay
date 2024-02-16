@@ -1,0 +1,44 @@
+/ {
+	uln2003_1 {
+		compatible = "gpio-stepper-motor-controller";
+		gpios = <&gpioa 9 GPIO_ACTIVE_HIGH>,
+				<&gpioc 7 GPIO_ACTIVE_HIGH>,
+				<&gpiob 0 GPIO_ACTIVE_HIGH>,
+				<&gpioa 7 GPIO_ACTIVE_HIGH>;
+
+		motor_x: motor_x{
+			gear-ratio = "64";
+			steps-per-revolution = <32>;
+		};
+	};
+
+		uln2003_2 {
+        	compatible = "gpio-stepper-motor-controller";
+        	gpios = <&gpioa 8 GPIO_ACTIVE_HIGH>,
+        			<&gpiob 14 GPIO_ACTIVE_HIGH> ,
+        		 	<&gpiob 4 GPIO_ACTIVE_HIGH>,
+        		 	<&gpiob 5 GPIO_ACTIVE_HIGH>;
+
+        	motor_y: motor_y{
+        		status = "okay";
+        		gear-ratio = "64";
+        		steps-per-revolution = <32>;
+        	};
+        };
+
+        		uln2003_3 {
+                	compatible = "gpio-stepper-motor-controller";
+                	gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>,
+                			<&gpioc 4 GPIO_ACTIVE_HIGH> ,
+                		 	<&gpioa 10 GPIO_ACTIVE_HIGH>,
+                		 	<&gpiob 3 GPIO_ACTIVE_HIGH>;
+
+                	motor_z: motor_z{
+                		status = "okay";
+                		gear-ratio = "64";
+                		steps-per-revolution = <32>;
+                	};
+                };
+
+
+};

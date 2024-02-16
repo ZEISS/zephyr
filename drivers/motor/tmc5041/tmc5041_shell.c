@@ -4,7 +4,7 @@
  */
 
 #include <zephyr/device.h>
-#include <zephyr/drivers/stepper_motor.h>
+#include <zephyr/drivers/motor.h>
 #include <zephyr/shell/shell.h>
 #include <zephyr/sys/util.h>
 

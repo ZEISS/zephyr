@@ -1,0 +1,39 @@
+@startyaml
+
+description: TRINAMIC TMC5041
+
+compatible: "trinamic,tmc5041"
+
+include:
+	description: Stepper Motor Controller
+	include:
+		description: Motor Controller
+		child-binding:
+			description: Motor
+			properties:
+				gear-ratio: |
+					int
+	child-binding:
+		description: Stepper Motor
+		properties:
+			steps-per-revolution: |
+				int
+			micro-step-res: |
+				int
+
+properties:
+  "#address-cells": |
+    default = 1
+    const = 1
+
+  "#size-cells": |
+    default = 0
+    const = 0
+
+child-binding:
+  description: tmc stepper motor
+  properties:
+    stall-guard-setting: |
+      int
+
+@endyaml

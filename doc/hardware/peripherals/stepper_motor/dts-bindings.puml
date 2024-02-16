@@ -1,0 +1,34 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+annotation spi_device_bindings{
+}
+
+annotation trinamic_tmc5041_stepper_motor_bindings{
+	int stall-guard-setting
+}
+
+annotation motor_bindings {
+	int reg
+	string gear_ratio
+}
+annotation steppermotor_bindings {
+	enum micro_step_resolution
+	int steps_per_revolution
+}
+annotation servomotor_bindings
+annotation trinamic_tmc5041_bindings{
+	phandle-array int-gpios
+}
+
+annotation gpio_stepper_motor_bindings {
+	phandle-array gpios
+}
+
+steppermotor_bindings --|> motor_bindings
+servomotor_bindings --|> motor_bindings
+trinamic_tmc5041_bindings --|> steppermotor_bindings
+trinamic_tmc5041_bindings --|> spi_device_bindings
+gpio_stepper_motor_bindings --|> steppermotor_bindings
+trinamic_tmc5041_stepper_motor_bindings "*" <-- "1" trinamic_tmc5041_bindings
+@enduml

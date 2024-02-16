@@ -3,22 +3,11 @@
 
 description: Stepper Motor Controller
 
-include: base.yaml
+include: motor-controller.yaml
 
 child-binding:
   description: Stepper Motor
   properties:
-    reg:
-      type: int
-      description: stepper motor index
-
-    gear-ratio:
-      type: string
-      default: "1.0"
-      description: |
-        Gear ratio from stepper motor to end transmission, This value can be in float and hence
-        the property type string
-
     micro-step-res:
       type: int
       enum:

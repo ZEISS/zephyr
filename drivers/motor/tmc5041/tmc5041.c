@@ -8,7 +8,7 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/dt-bindings/stepper_motor/tmc5041_reg.h>
-#include <zephyr/drivers/stepper_motor.h>
+#include <zephyr/drivers/motor.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>

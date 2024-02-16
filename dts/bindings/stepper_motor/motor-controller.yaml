@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+
+description: Motor Controller
+
+include: base.yaml
+
+properties:
+  "#address-cells":
+    const: 1
+    default: 1
+  "#size-cells":
+    const: 0
+    default: 0
+
+child-binding:
+  description: Motor
+  properties:
+    reg:
+      type: int
+      description: motor index
+
+    gear-ratio:
+      type: string
+      default: "1.0"
+      description: |
+        Gear ratio from stepper motor to end transmission, This value can be in float and hence
+        the property type string

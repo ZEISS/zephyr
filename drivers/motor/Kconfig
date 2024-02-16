@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: Copyright (c) 2024 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig MOTOR
+	bool "Motor"
+	help
+		Enable Motor
+
+if MOTOR
+
+module = MOTOR
+module-str = motor
+source "subsys/logging/Kconfig.template.log_config"
+
+config MOTOR_INIT_PRIORITY
+	int "Motor init priority"
+	default 90
+	help
+	  Motor initialization priority.
+
+config MOTOR_SHELL
+	bool "Shell for motor control"
+	depends on SHELL
+	default y if !SHELL_MINIMAL
+	help
+	  This shell provides specialised access to basic motor device shell
+	  to execute various functions.
+
+comment "Motor Drivers"
+
+source "drivers/motor/gpio_stepper_motor_controller/Kconfig"
+source "drivers/motor/tmc5041/Kconfig"
+
+endif

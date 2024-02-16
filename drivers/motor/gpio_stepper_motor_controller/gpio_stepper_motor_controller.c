@@ -7,10 +7,11 @@
 
 #include "zephyr/drivers/gpio.h"
 #include <zephyr/kernel.h>
-#include "zephyr/drivers/stepper_motor.h"
+#include <stdlib.h>
+#include <zephyr/drivers/motor.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(gpio_stepper_motor_controller, CONFIG_STEPPER_MOTOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(gpio_stepper_motor_controller, CONFIG_MOTOR_LOG_LEVEL);
 
 struct gpio_stepper_motor_controller_data {
 	int32_t min_position;
@@ -22,7 +23,7 @@ struct gpio_stepper_motor_controller_data {
 
 struct gpio_stepper_motor_controller_config {
 	const uint16_t motor_steps_per_rev;
-	const double motor_gear_ratio;
+	const float motor_gear_ratio;
 	const struct gpio_dt_spec *gpio_in_pins;
 	const uint8_t number_in_pins;
 };
@@ -64,12 +65,12 @@ static int32_t stepper_motor_move_with_4_gpios(const struct gpio_dt_spec *gpio_s
 	return 0;
 }
 
-static int32_t stepper_motor_move(const struct stepper_motor *motor)
+static int32_t stepper_motor_move(const struct device *motor)
 {
 	struct gpio_stepper_motor_controller_data *motor_data =
-		(struct gpio_stepper_motor_controller_data *)motor->controller->data;
+		(struct gpio_stepper_motor_controller_data *)motor->data;
 	const struct gpio_stepper_motor_controller_config *motor_config =
-		(const struct gpio_stepper_motor_controller_config *)motor->controller->config;
+		(const struct gpio_stepper_motor_controller_config *)motor->config;
 	if (motor_data->actual_speed == 0) {
 		motor_data->actual_speed = 10;
 		LOG_INF("Running Motor with default speed");
@@ -77,66 +78,65 @@ static int32_t stepper_motor_move(const struct stepper_motor *motor)
 	uint32_t step_delay = 60L * 1000L * 1000L /
 			      (motor_config->motor_steps_per_rev * motor_config->motor_gear_ratio) /
 			      motor_data->actual_speed;
-	while (motor_data->target_position != motor_data->actual_position) {
+	int32_t steps_to_target = motor_data->target_position;
 
-		int32_t remaining_steps = motor_data->target_position - motor_data->actual_position;
-
-		LOG_DBG("Actual Position %d", motor_data->actual_position);
-		switch (motor_config->number_in_pins) {
-		case 4: {
-			stepper_motor_move_with_4_gpios(motor_config->gpio_in_pins,
-							motor_data->actual_position);
-			break;
+	if (steps_to_target > 0) {
+		for (int32_t step = 0; step < steps_to_target; step++) {
+			stepper_motor_move_with_4_gpios(motor_config->gpio_in_pins, step);
+			k_sleep(K_USEC(step_delay));
 		}
-		default: {
-			return -ENOTSUP;
+	} else if (steps_to_target < 0) {
+		for (int32_t step = steps_to_target; step < 0; step++) {
+			stepper_motor_move_with_4_gpios(motor_config->gpio_in_pins, step);
+			k_sleep(K_USEC(step_delay));
 		}
-		}
-		if (remaining_steps > 0) {
-			motor_data->actual_position++;
-		} else {
-			motor_data->actual_position--;
-		}
-		k_sleep(K_USEC(step_delay));
 	}
-	LOG_INF("Motor is at Target Position");
+	LOG_INF("Motor is at Target Position:%d, actual Position: %d", motor_data->target_position,
+		motor_data->actual_position);
 	return 0;
 }
 
-static int32_t gpio_stepper_motor_set_position(const struct stepper_motor *motor,
-					       const struct stepper_motor_position_info *pos_info)
+static int32_t gpio_motor_rotate(const struct device *motor, const float angle)
 {
+	const struct gpio_stepper_motor_controller_config *motor_config =
+		(const struct gpio_stepper_motor_controller_config *)motor->config;
 	struct gpio_stepper_motor_controller_data *motor_data =
-		(struct gpio_stepper_motor_controller_data *)motor->controller->data;
+		(struct gpio_stepper_motor_controller_data *)motor->data;
 
-	switch (pos_info->type) {
-	case MOTOR_POSITION_MIN: {
-		motor_data->min_position = pos_info->position;
-		break;
-	}
-	case MOTOR_POSITION_MAX: {
-		motor_data->max_position = pos_info->position;
-		break;
-	}
-	case MOTOR_POSITION_ACTUAL: {
-		motor_data->actual_position = pos_info->position;
-		break;
-	}
-	case MOTOR_POSITION_TARGET: {
-		motor_data->target_position = pos_info->position;
-		stepper_motor_move(motor);
-		break;
-	}
-	}
+	motor_data->target_position =
+		(angle * motor_config->motor_gear_ratio * motor_config->motor_steps_per_rev) / 360;
+	LOG_INF("Target Position is are: %d", motor_data->target_position);
+	stepper_motor_move(motor);
+	motor_data->actual_position += motor_data->target_position;
 
 	return 0;
 }
 
-static int32_t gpio_stepper_motor_get_position(const struct stepper_motor *motor,
-					       struct stepper_motor_position_info *pos_info)
+static int32_t gpio_motor_set_angle(const struct device *motor, const float angle)
+{
+	const struct gpio_stepper_motor_controller_config *motor_config =
+		(const struct gpio_stepper_motor_controller_config *)motor->config;
+	struct gpio_stepper_motor_controller_data *motor_data =
+		(struct gpio_stepper_motor_controller_data *)motor->data;
+
+	motor_data->target_position =
+		((angle * motor_config->motor_gear_ratio * motor_config->motor_steps_per_rev) /
+		 360) -
+		motor_data->actual_position;
+	LOG_INF("Target Position is are: %d", motor_data->target_position);
+	stepper_motor_move(motor);
+	motor_data->actual_position =
+		((angle * motor_config->motor_gear_ratio * motor_config->motor_steps_per_rev) /
+		 360);
+
+	return 0;
+}
+
+static int32_t gpio_stepper_motor_get_position(const struct device *motor,
+					       struct motor_position_info *pos_info)
 {
 	struct gpio_stepper_motor_controller_data *motor_data =
-		(struct gpio_stepper_motor_controller_data *)motor->controller->data;
+		(struct gpio_stepper_motor_controller_data *)motor->data;
 	switch (pos_info->type) {
 	case MOTOR_POSITION_MIN: {
 		pos_info->position = motor_data->min_position;
@@ -166,7 +166,7 @@ static int gpio_stepper_motor_controller_init(const struct device *dev)
 		"per rev:%d, "
 		"gear ratio:%f",
 		dev->name, config->number_in_pins, config->motor_steps_per_rev,
-		config->motor_gear_ratio);
+		(double)config->motor_gear_ratio);
 
 	for (uint8_t n_pin = 0; n_pin < config->number_in_pins; n_pin++) {
 		gpio_pin_configure_dt(&config->gpio_in_pins[n_pin], GPIO_OUTPUT_LOW);
@@ -176,30 +176,32 @@ static int gpio_stepper_motor_controller_init(const struct device *dev)
 	return 0;
 }
 
-static const struct stepper_motor_api gpio_stepper_motor_controller_stepper_motor_controller_api = {
-	.stepper_motor_set_position = gpio_stepper_motor_set_position,
-	.stepper_motor_get_position = gpio_stepper_motor_get_position,
+static const struct motor_api gpio_stepper_motor_controller_stepper_motor_controller_api = {
+	.motor_rotate = gpio_motor_rotate,
+	.motor_set_angle = gpio_motor_set_angle,
+	.motor_get_position = gpio_stepper_motor_get_position,
 };
 
-#define GPIO_STEPPER_MOTOR_CONTROLLER_DEFINE(inst)                                                 \
+#define GPIO_STEPPER_MOTOR_DEFINE(child, inst)                                                     \
 	static const struct gpio_dt_spec gpio_stepper_motor_in_pins_##inst[] = {                   \
 		DT_INST_FOREACH_PROP_ELEM_SEP(inst, gpios, GPIO_DT_SPEC_GET_BY_IDX, (,)),         \
 	};                                                                                         \
 	static const struct gpio_stepper_motor_controller_config                                   \
 		gpio_stepper_motor_controller_config_##inst = {                                    \
-			.motor_steps_per_rev =                                                     \
-				DT_PROP(DT_INST_CHILD(inst, motor), steps_per_revolution),         \
-			.motor_gear_ratio =                                                        \
-				DT_STRING_UNQUOTED(DT_INST_CHILD(inst, motor), gear_ratio),        \
+			.motor_steps_per_rev = DT_PROP(child, steps_per_revolution),               \
+			.motor_gear_ratio = DT_STRING_UNQUOTED(child, gear_ratio),                 \
 			.gpio_in_pins = gpio_stepper_motor_in_pins_##inst,                         \
 			.number_in_pins = ARRAY_SIZE(gpio_stepper_motor_in_pins_##inst),           \
 	};                                                                                         \
 	static struct gpio_stepper_motor_controller_data                                           \
 		gpio_stepper_motor_controller_data_##inst = {.actual_position = 0u};               \
-	DEVICE_DT_INST_DEFINE(inst, gpio_stepper_motor_controller_init, NULL,                      \
-			      &gpio_stepper_motor_controller_data_##inst,                          \
-			      &gpio_stepper_motor_controller_config_##inst, POST_KERNEL,           \
-			      CONFIG_APPLICATION_INIT_PRIORITY,                                    \
-			      &gpio_stepper_motor_controller_stepper_motor_controller_api);
+	DEVICE_DT_DEFINE(child, gpio_stepper_motor_controller_init, NULL,                          \
+			 &gpio_stepper_motor_controller_data_##inst,                               \
+			 &gpio_stepper_motor_controller_config_##inst, POST_KERNEL,                \
+			 CONFIG_APPLICATION_INIT_PRIORITY,                                         \
+			 &gpio_stepper_motor_controller_stepper_motor_controller_api);
+
+#define GPIO_STEPPER_MOTOR_CONTROLLER_DEFINE(inst)                                                 \
+	DT_INST_FOREACH_CHILD_VARGS(inst, GPIO_STEPPER_MOTOR_DEFINE, inst)
 
 DT_INST_FOREACH_STATUS_OKAY(GPIO_STEPPER_MOTOR_CONTROLLER_DEFINE)
