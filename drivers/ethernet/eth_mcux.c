@@ -65,8 +65,14 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define PHY_OMS_FACTORY_MODE_MASK 0x8000U /* The factory mode Override/Status mask. */
 
 /* Defines the PHY KSZ8081 vendor defined registers. */
+#ifdef CZM_DO_NO_MERGE_ETH_MUX_PATCH 
+// dirty patch, required because our PHY has different control register addresses
+#define PHY_CONTROL1_REG 0x09U /* The PHY control one register. */
+#define PHY_CONTROL2_REG 0x0AU /* The PHY control two register. */
+#else // CZM_DO_NO_MERGE_ETH_MUX_PATCH
 #define PHY_CONTROL1_REG 0x1EU /* The PHY control one register. */
 #define PHY_CONTROL2_REG 0x1FU /* The PHY control two register. */
+#endif // CZM_DO_NO_MERGE_ETH_MUX_PATCH
 
 /* Defines the PHY KSZ8081 ID number. */
 #define PHY_CONTROL_ID1 0x22U /* The PHY ID1 */
@@ -457,7 +463,12 @@ static void eth_mcux_phy_event(struct eth_context *context)
 	status_t res;
 	uint16_t ctrl2;
 #endif
+#ifdef CZM_DO_NO_MERGE_ETH_MUX_PATCH
+	// dirty patch, required because our PHY only supports half duplex
+	phy_duplex_t phy_duplex = kPHY_HalfDuplex;
+#else // CZM_DO_NO_MERGE_ETH_MUX_PATCH
 	phy_duplex_t phy_duplex = kPHY_FullDuplex;
+#endif // CZM_DO_NO_MERGE_ETH_MUX_PATCH
 	phy_speed_t phy_speed = kPHY_Speed100M;
 
 #if defined(CONFIG_ETH_MCUX_PHY_EXTRA_DEBUG)
