@@ -37,7 +37,7 @@ class ZephyrLibrary:
         if self.device is None:
             device_object = DeviceFactory.get_device_object(self.twister_harness_config)
             self.device = device_object
-        return device_object
+        return self.device
 
     def run_device(self):
         if self.device is None:
