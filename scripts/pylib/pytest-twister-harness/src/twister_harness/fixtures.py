@@ -36,7 +36,6 @@ def device_object(twister_harness_config: TwisterHarnessConfig) -> Generator[Dev
     finally:  # to make sure we close all running processes execution
         device_object.close()
 
-
 def determine_scope(fixture_name, config):
     if dut_scope := config.getoption("--dut-scope", None):
         return dut_scope
