@@ -447,6 +447,9 @@ class Pytest(Harness):
         if hardware.product:
             command.append(f'--device-product={hardware.product}')
 
+        if hardware.properties:
+            command.extend(['--device-properties', *hardware.properties])
+
         if hardware.pre_script:
             command.append(f'--pre-script={hardware.pre_script}')
 
