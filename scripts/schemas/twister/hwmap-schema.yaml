@@ -61,3 +61,8 @@ sequence:
       "flash_with_test":
         type: bool
         required: false
+      "properties":
+        type: seq
+        required: false
+        sequence:
+          - type: str
