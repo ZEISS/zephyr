@@ -21,6 +21,7 @@ class DeviceConfig:
     build_dir: Path
     base_timeout: float = 60.0  # [s]
     platform: str = ''
+    properties: list[str] = field(default_factory=list, repr=False)
     serial: str = ''
     baud: int = 115200
     runner: str = ''
@@ -64,6 +65,7 @@ class TwisterHarnessConfig:
             build_dir=_cast_to_path(options.build_dir),
             base_timeout=options.base_timeout,
             platform=options.platform,
+            properties=options.device_properties,
             serial=options.device_serial,
             baud=options.device_serial_baud,
             runner=options.runner,

@@ -49,8 +49,9 @@ class DUT(object):
                  post_flash_script=None,
                  runner=None,
                  flash_timeout=60,
+                 flash_before=False,
                  flash_with_test=False,
-                 flash_before=False):
+                 properties=None):
 
         self.serial = serial
         self.baud = serial_baud or 115200
@@ -75,6 +76,7 @@ class DUT(object):
         self.match = False
         self.flash_timeout = flash_timeout
         self.flash_with_test = flash_with_test
+        self.properties = properties
 
     @property
     def available(self):
@@ -246,6 +248,7 @@ class HardwareMap:
             baud = dut.get('baud', None)
             product = dut.get('product')
             fixtures = dut.get('fixtures', [])
+            properties = dut.get('properties', [])
             connected= dut.get('connected') and ((serial or serial_pty) is not None)
             if not connected:
                 continue
@@ -263,7 +266,9 @@ class HardwareMap:
                           post_script=post_script,
                           post_flash_script=post_flash_script,
                           flash_timeout=flash_timeout,
-                          flash_with_test=flash_with_test)
+                          flash_with_test=flash_with_test,
+                          properties=properties,
+                          )
             new_dut.fixtures = fixtures
             new_dut.counter = 0
             self.duts.append(new_dut)

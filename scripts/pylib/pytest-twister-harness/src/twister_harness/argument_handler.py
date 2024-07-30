@@ -50,6 +50,12 @@ class ArgumentHandler:
             help="Serial device baud rate (default 115200).",
         )
         self.argument_add_func(
+            "--device-properties",
+            nargs="*",
+            help="Properties of the connected hardware device",
+            default=[],
+        )
+        self.argument_add_func(
             "--runner", help="Use the specified west runner (pyocd, nrfjprog, etc.)."
         )
         self.argument_add_func(
