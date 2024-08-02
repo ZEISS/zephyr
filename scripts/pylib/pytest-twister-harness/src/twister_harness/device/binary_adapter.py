@@ -118,7 +118,22 @@ class NativeSimulatorAdapter(BinaryAdapterBase):
 
     def generate_command(self) -> None:
         """Set command to run."""
-        self.command = [str(self.device_config.build_dir / 'zephyr' / 'zephyr.exe')]
+        base_command = [str(self.device_config.build_dir / 'zephyr' / 'zephyr.exe')]
+        cli_flags = self._get_execution_cli_flags()
+        self.command = base_command + cli_flags
+
+    def _get_execution_cli_flags(self) -> list[str]:
+        """Add additional flags for execution"""
+        return [f'--can-if={self._extract_can()}']
+
+    def _extract_can(self) -> str:
+        device_properties = self.device_config.properties
+        for property in device_properties:
+            key, value = property.split(":")
+            if key == 'host_can':
+                return value
+
+        return 'vcan0'
 
 
 class UnitSimulatorAdapter(BinaryAdapterBase):

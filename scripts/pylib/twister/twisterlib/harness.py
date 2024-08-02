@@ -15,6 +15,8 @@ import logging
 import threading
 import time
 import shutil
+import multiprocessing as mp
+import itertools
 
 from twisterlib.error import ConfigurationError
 from twisterlib.environment import ZEPHYR_BASE, PYTEST_PLUGIN_INSTALLED
@@ -26,6 +28,21 @@ logger = logging.getLogger('twister')
 logger.setLevel(logging.DEBUG)
 
 _WINDOWS = platform.system() == 'Windows'
+
+# this is done globally, so each process later has access to the
+# same instance. This can and should be refactored for 'upstream' (if wanted)
+vcan_queue = mp.Queue()
+for i in itertools.count():
+    if not os.path.exists(f"/sys/class/net/vcan{i}"):
+        break
+    vcan_queue.put(f"vcan{i}")
+
+initial_number_of_vcans = vcan_queue.qsize()
+if initial_number_of_vcans == 0:
+    logger.warning("No virtual CAN in form `vcan$i` found! "
+                   "If you execute tests with 'CAN' on native_sim, "
+                   "this may lead to interfering test executions!"
+                  )
 
 
 result_re = re.compile(r".*(PASS|FAIL|SKIP) - (test_)?(\S*) in (\d*[.,]?\d*) seconds")
@@ -297,6 +314,7 @@ class TwisterLibraryHarness(Harness, abc.ABC):
         self.running_dir = instance.build_dir
         self.source_dir = instance.testsuite.source_dir
         self.reserved_serial = None
+        self.reserved_vcan = None
 
         self.tool_name = tool_name
 
@@ -323,6 +341,13 @@ class TwisterLibraryHarness(Harness, abc.ABC):
             )
         elif handler.type_str in SUPPORTED_SIMS_IN_PYTEST:
             command.append(f'--device-type={handler.type_str}')
+            # if no vcans are created, do not pass anything and use defaults
+            # better way would be to filter based on test tags, but this information
+            # is not existing at this point anymore
+            if initial_number_of_vcans:
+                self.reserved_vcan = vcan_queue.get()
+                command.extend(['--device-properties', f'host_can:{self.reserved_vcan}'])
+
         elif handler.type_str == 'build':
             command.append('--device-type=custom')
         else:
@@ -341,6 +366,8 @@ class TwisterLibraryHarness(Harness, abc.ABC):
         finally:
             if self.reserved_serial:
                 self.instance.handler.make_device_available(self.reserved_serial)
+            if self.reserved_vcan:
+                vcan_queue.put(self.reserved_vcan)
         self._update_test_status()
 
     def _generate_parameters_for_hardware(self, handler: Handler):
