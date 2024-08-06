@@ -104,10 +104,10 @@ static void fake_can_reset_rule_before(const struct ztest_unit_test *test, void 
 	RESET_FAKE(fake_can_set_timing);
 	RESET_FAKE(fake_can_set_timing_data);
 	RESET_FAKE(fake_can_send);
-#if CONFIG_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
 	/* When this config is enabled, a custom function is used. */
 	RESET_FAKE(fake_can_add_rx_filter);
-#endif /* CONFIG_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
+#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
 	RESET_FAKE(fake_can_remove_rx_filter);
 	RESET_FAKE(fake_can_get_state);
 	RESET_FAKE(fake_can_recover);
