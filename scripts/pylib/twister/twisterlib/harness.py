@@ -28,6 +28,21 @@ logger.setLevel(logging.DEBUG)
 
 _WINDOWS = platform.system() == 'Windows'
 
+# this is done globally, so each process later has access to the
+# same instance. This can and should be refactored for 'upstream' (if wanted)
+vcan_queue = mp.Queue()
+for i in itertools.count():
+    if not os.path.exists(f"/sys/class/net/vcan{i}"):
+        break
+    vcan_queue.put(f"vcan{i}")
+
+initial_number_of_vcans = vcan_queue.qsize()
+if initial_number_of_vcans == 0:
+    logger.warning("No virtual CAN in form `vcan$i` found! "
+                   "If you execute tests with 'CAN' on native_sim, "
+                   "this may lead to interfering test executions!"
+                  )
+
 
 result_re = re.compile(r".*(PASS|FAIL|SKIP) - (test_)?(\S*) in (\d*[.,]?\d*) seconds")
 class Harness:
