@@ -76,6 +76,7 @@ Besides some common keywords provided by Robot Framework themselves, there is a
 'ZephyrLibrary' that can be loaded and used in the Robot test files.
 
 .. code-block:: robotframework
+
    *** Settings ***
    Library          twister_harness.robot_framework.ZephyrLibrary
 
