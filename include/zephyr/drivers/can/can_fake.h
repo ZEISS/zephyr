@@ -47,7 +47,7 @@ DECLARE_FAKE_VALUE_FUNC(int, fake_can_get_max_filters, const struct device *, bo
 
 DECLARE_FAKE_VALUE_FUNC(int, fake_can_get_core_clock, const struct device *, uint32_t *);
 
-#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+#ifdef CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
 int inject_can_frame_to_recv_msgq(const struct device *dev, const struct can_frame *frame);
 #endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
 
