@@ -23,9 +23,8 @@ struct fake_can_data {
 	struct can_driver_data common;
 #ifdef CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
 	struct k_msgq *rx_msgq; /* Receiver side message queue added via can_add_rx_filter */
-#endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */	
+#endif                          /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */
 };
-
 
 DEFINE_FAKE_VALUE_FUNC(int, fake_can_start, const struct device *);
 
@@ -136,49 +135,40 @@ static const struct can_driver_api fake_can_driver_api = {
 	.set_state_change_callback = fake_can_set_state_change_callback,
 	.get_core_clock = fake_can_get_core_clock,
 	.get_max_filters = fake_can_get_max_filters,
-	.timing_min = {
-		.sjw = 0x01,
-		.prop_seg = 0x01,
-		.phase_seg1 = 0x01,
-		.phase_seg2 = 0x01,
-		.prescaler = 0x01
-	},
-	.timing_max = {
-		.sjw = 0x0f,
-		.prop_seg = 0x0f,
-		.phase_seg1 = 0x0f,
-		.phase_seg2 = 0x0f,
-		.prescaler = 0xffff
-	},
+	.timing_min = {.sjw = 0x01,
+		       .prop_seg = 0x01,
+		       .phase_seg1 = 0x01,
+		       .phase_seg2 = 0x01,
+		       .prescaler = 0x01},
+	.timing_max = {.sjw = 0x0f,
+		       .prop_seg = 0x0f,
+		       .phase_seg1 = 0x0f,
+		       .phase_seg2 = 0x0f,
+		       .prescaler = 0xffff},
 #ifdef CONFIG_CAN_FD_MODE
 	.set_timing_data = fake_can_set_timing_data,
-	.timing_data_min = {
-		.sjw = 0x01,
-		.prop_seg = 0x01,
-		.phase_seg1 = 0x01,
-		.phase_seg2 = 0x01,
-		.prescaler = 0x01
-	},
-	.timing_data_max = {
-		.sjw = 0x0f,
-		.prop_seg = 0x0f,
-		.phase_seg1 = 0x0f,
-		.phase_seg2 = 0x0f,
-		.prescaler = 0xffff
-	},
+	.timing_data_min = {.sjw = 0x01,
+			    .prop_seg = 0x01,
+			    .phase_seg1 = 0x01,
+			    .phase_seg2 = 0x01,
+			    .prescaler = 0x01},
+	.timing_data_max = {.sjw = 0x0f,
+			    .prop_seg = 0x0f,
+			    .phase_seg1 = 0x0f,
+			    .phase_seg2 = 0x0f,
+			    .prescaler = 0xffff},
 #endif /* CONFIG_CAN_FD_MODE */
 };
 
-#define FAKE_CAN_INIT(inst)						     \
-	static const struct fake_can_config fake_can_config_##inst = {	     \
-		.common = CAN_DT_DRIVER_CONFIG_INST_GET(inst, 0U),	     \
-	};								     \
-									     \
-	static struct fake_can_data fake_can_data_##inst;		     \
-									     \
-	CAN_DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &fake_can_data_##inst,   \
-				  &fake_can_config_##inst, POST_KERNEL,	     \
-				  CONFIG_CAN_INIT_PRIORITY,                  \
+#define FAKE_CAN_INIT(inst)                                                                        \
+	static const struct fake_can_config fake_can_config_##inst = {                             \
+		.common = CAN_DT_DRIVER_CONFIG_INST_GET(inst, 0U),                                 \
+	};                                                                                         \
+                                                                                                   \
+	static struct fake_can_data fake_can_data_##inst;                                          \
+                                                                                                   \
+	CAN_DEVICE_DT_INST_DEFINE(inst, NULL, NULL, &fake_can_data_##inst,                         \
+				  &fake_can_config_##inst, POST_KERNEL, CONFIG_CAN_INIT_PRIORITY,  \
 				  &fake_can_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(FAKE_CAN_INIT)
