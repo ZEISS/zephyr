@@ -22,7 +22,7 @@ struct fake_can_config {
 
 struct fake_can_data {
 	struct can_driver_data common;
-#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+#ifdef CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
 	struct k_msgq *rx_msgq; /* Receiver side message queue added via can_add_rx_filter */
 #endif /* CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION */	
 };
@@ -68,7 +68,7 @@ static int fake_can_get_core_clock_delegate(const struct device *dev, uint32_t *
 	return 0;
 }
 
-#if CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
+#ifdef CONFIG_CAN_FAKE_ENABLE_RX_MESSAGE_QUEUE_INJECTION
 int fake_can_add_rx_filter(const struct device *dev, can_rx_callback_t callback, void *user_data,
 			   const struct can_filter *filter)
 {
