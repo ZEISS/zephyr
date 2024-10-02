@@ -154,8 +154,6 @@ static void stallguard_work_handler(struct k_work *work)
 	int err;
 	const struct tmc5041_stepper_config *stepper_config = stepper_data->stepper->config;
 
-	LOG_DBG("Stallguard work handler");
-
 	err = stallguard_enable(stepper_data->stepper, true);
 	if (err == -EAGAIN) {
 		LOG_ERR("Trying again to enable stallguard");
@@ -186,26 +184,31 @@ static void rampstat_work_handler(struct k_work *work)
 		CONTAINER_OF(dwork, struct tmc5041_stepper_data, rampstat_callback_dwork);
 	const struct tmc5041_stepper_config *stepper_config = stepper_data->stepper->config;
 
-	LOG_DBG("Rampstat work handler");
-	if (stepper_config->controller == NULL) {
-		LOG_ERR("Controller not initialized");
-		return;
-	}
+    __ASSERT_NO_MSG(stepper_config->controller != NULL);
 
 	uint32_t drv_status;
+    int err;
+	tmc5041_read(stepper_config->controller,
+			     TMC5041_DRVSTATUS(stepper_config->index), &drv_status);
 
-	tmc5041_read(stepper_config->controller, TMC5041_DRVSTATUS(stepper_config->index),
-		     &drv_status);
-	if (drv_status & TMC5041_DRV_STATUS_SG_STATUS_MASK) {
-		LOG_INF("DRVSTATUS %s: Stall detected", stepper_data->stepper->name);
-		tmc5041_write(stepper_config->controller, TMC5041_RAMPMODE(stepper_config->index),
-			      TMC5041_RAMPMODE_HOLD_MODE);
-	}
+    if (FIELD_GET(TMC5041_DRV_STATUS_SG_STATUS_MASK, drv_status) == 1U) {
+        LOG_INF("%s: Stall detected", stepper_data->stepper->name);
+        err = tmc5041_write(stepper_config->controller, TMC5041_RAMPMODE(stepper_config->index),
+                            TMC5041_RAMPMODE_HOLD_MODE);
+        if (err != 0) {
+            LOG_ERR("%s: Failed to stop motor", stepper_data->stepper->name);
+            return;
+        }
+    }
 
 	uint32_t rampstat_value;
 
-	tmc5041_read(stepper_config->controller, TMC5041_RAMPSTAT(stepper_config->index),
-		     &rampstat_value);
+    err = tmc5041_read(stepper_config->controller, TMC5041_RAMPSTAT(stepper_config->index),
+                       &rampstat_value);
+    if (err != 0) {
+        LOG_ERR("%s: Failed to read RAMPSTAT register", stepper_data->stepper->name);
+        return;
+    }
 
 	const uint8_t ramp_stat_values = FIELD_GET(TMC5041_RAMPSTAT_INT_MASK, rampstat_value);
 
@@ -280,13 +283,16 @@ static int tmc5041_stepper_is_moving(const struct device *dev, bool *is_moving)
 	uint32_t reg_value;
 	int err;
 
-	err = tmc5041_read(config->controller, TMC5041_VACTUAL(config->index), &reg_value);
-	*is_moving = reg_value ? true : false;
+	err = tmc5041_read(config->controller, TMC5041_DRVSTATUS(config->index), &reg_value);
+
+    if (err != 0) {
+        LOG_ERR("%s: Failed to read DRVSTATUS register", dev->name);
+        return -EIO;
+    }
+
+    *is_moving = (FIELD_GET(TMC5041_DRV_STATUS_STST_SHIFT_BIT, reg_value) == 1U) ? true : false;
 	LOG_DBG("Stepper motor controller %s is moving: %d", dev->name, *is_moving);
 
-	if (err != 0) {
-		return -EIO;
-	}
 	return 0;
 }
 
@@ -346,6 +352,7 @@ static int tmc5041_stepper_set_max_velocity(const struct device *dev, uint32_t v
 	calculate_velocity_from_hz_to_fclk(config->controller, velocity, &velocity_fclk);
 	err = tmc5041_write(config->controller, TMC5041_VMAX(config->index), velocity_fclk);
 	if (err != 0) {
+        LOG_ERR("%s: Failed to set max velocity", dev->name);
 		return -EIO;
 	}
 
@@ -400,7 +407,6 @@ static int tmc5041_stepper_get_micro_step_res(const struct device *dev,
 
 static int tmc5041_stepper_set_actual_position(const struct device *dev, const int32_t position)
 {
-	LOG_DBG("Stepper motor controller %s set actual position to %d", dev->name, position);
 	const struct tmc5041_stepper_config *config = dev->config;
 	int err;
 
@@ -414,7 +420,9 @@ static int tmc5041_stepper_set_actual_position(const struct device *dev, const i
 	if (err != 0) {
 		return -EIO;
 	}
-	return 0;
+    LOG_DBG("Stepper motor controller %s set actual position to %d", dev->name, position);
+
+    return 0;
 }
 
 static int tmc5041_stepper_get_actual_position(const struct device *dev, int32_t *position)
