@@ -13,3 +13,18 @@ properties:
     required: true
     description: |
       INT pin GPIO identifier, open-drain, active low.
+  integration-cycles:
+    type: int
+    default: 256
+    description: |
+      Initial ADC integration cycle setting from 1 to 256.
+      1 cycle = 2.78ms.
+  gain:
+    type: int
+    default: 0
+    description: |
+      ALS Gain Control:
+      0 - 1x
+      1 - 4x
+      2 - 16x
+      3 - 64x
