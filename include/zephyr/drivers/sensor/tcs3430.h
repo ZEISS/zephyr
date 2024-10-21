@@ -12,6 +12,8 @@
 enum sensor_attribute_tcs3430 {
 	/** XYZB Integration Cycles */
 	SENSOR_ATTR_TCS3430_INTEGRATION_CYCLES = SENSOR_ATTR_PRIV_START,
+	/** Gain setting */
+	SENSOR_ATTR_TCS3430_GAIN,
 };
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_SENSOR_TCS3430_H_ */
