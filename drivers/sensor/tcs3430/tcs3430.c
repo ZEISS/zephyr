@@ -29,6 +29,8 @@ LOG_MODULE_REGISTER(tcs3430, CONFIG_SENSOR_LOG_LEVEL);
 
 #define TCS3430_CONTROL_REG 0x8F
 
+#define TCS3430_CFG1_REG 0x90
+
 #define TCS3430_ID_REG 0x92
 #define TCS3430_ID     0xDC
 
@@ -62,6 +64,8 @@ LOG_MODULE_REGISTER(tcs3430, CONFIG_SENSOR_LOG_LEVEL);
 struct tcs3430_config {
 	struct i2c_dt_spec i2c;
 	struct gpio_dt_spec int_gpio;
+	uint16_t integration_cycles;
+	uint8_t gain;
 };
 
 struct tcs3430_data {
@@ -187,13 +191,23 @@ static int tcs3430_attr_set(const struct device *dev, enum sensor_channel chan,
 	int ret;
 	uint8_t reg_val;
 
-	switch (attr) {
+	switch ((enum sensor_attribute_tcs3430)attr) {
 	case SENSOR_ATTR_TCS3430_INTEGRATION_CYCLES:
 		if (!IN_RANGE(val->val1, 1, 256)) {
 			return -EINVAL;
 		}
-		reg_val = UINT8_MAX - val->val1 + 1;
+		reg_val = (uint8_t)(val->val1-1);
 		ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_ATIME_REG, reg_val);
+		if (ret) {
+			return ret;
+		}
+		break;
+	case SENSOR_ATTR_TCS3430_GAIN:
+		if (!IN_RANGE(val->val1, 0, 3)) {
+			return -EINVAL;
+		}
+		reg_val = (uint8_t)val->val1;
+		ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_CFG1_REG, reg_val);
 		if (ret) {
 			return ret;
 		}
@@ -210,17 +224,23 @@ static int tcs3430_sensor_setup(const struct device *dev)
 	const struct tcs3430_config *cfg = dev->config;
 	uint8_t chip_id;
 	int ret;
+	if (!IN_RANGE(cfg->integration_cycles, 1, 256)) {
+		LOG_ERR("Invalid integration cycles: %d", cfg->integration_cycles);
+		return -EINVAL;
+	}
+	uint8_t atime_default = (uint8_t)(cfg->integration_cycles-1);
 	struct {
 		uint8_t reg_addr;
 		uint8_t value;
 	} reset_regs[] = {
 		{TCS3430_ENABLE_REG, TCS3430_DEFAULT_ENABLE},
 		{TCS3430_AICLEAR_REG, TCS3430_AICLEAR_RESET},
-		{TCS3430_ATIME_REG, TCS3430_DEFAULT_ATIME},
+		{TCS3430_ATIME_REG, atime_default},
 		{TCS3430_PERS_REG, TCS3430_DEFAULT_PERS},
 		{TCS3430_CONFIG_REG, TCS3430_DEFAULT_CONFIG},
 		{TCS3430_CONTROL_REG, TCS3430_DEFAULT_CONTROL},
 		{TCS3430_INTENAB_REG, TCS3430_DEFAULT_INTENAB},
+		{TCS3430_CFG1_REG, cfg->gain},
 		{TCS3430_CFG2_REG, TCS3430_DEFAULT_CFG2},
 	};
 
@@ -270,7 +290,7 @@ static int tcs3430_init(const struct device *dev)
 
 	ret = tcs3430_sensor_setup(dev);
 	if (ret < 0) {
-		LOG_ERR("Failed to setup device");
+		LOG_ERR("Failed to setup device: %d", ret);
 		return ret;
 	}
 
@@ -301,6 +321,8 @@ static int tcs3430_init(const struct device *dev)
 	static const struct tcs3430_config tcs3430_config_##n = {                                  \
 		.i2c = I2C_DT_SPEC_INST_GET(n),                                                    \
 		.int_gpio = GPIO_DT_SPEC_INST_GET(n, int_gpios),                                   \
+		.integration_cycles = DT_INST_PROP(n, integration_cycles),                        \
+		.gain = DT_INST_PROP(n, gain),                                          \
 	};                                                                                         \
 	SENSOR_DEVICE_DT_INST_DEFINE(n, &tcs3430_init, NULL, &tcs3430_data_##n,                    \
 				     &tcs3430_config_##n, POST_KERNEL,                             \
