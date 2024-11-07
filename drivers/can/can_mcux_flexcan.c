@@ -1145,7 +1145,7 @@ static int mcux_flexcan_init(const struct device *dev)
 	k_sem_init(&data->tx_allocs_sem, MCUX_FLEXCAN_MAX_TX,
 		   MCUX_FLEXCAN_MAX_TX);
 
-	err = can_calc_timing(dev, &data->timing, config->common.bus_speed,
+	err = can_calc_timing(dev, &data->timing, config->common.bitrate,
 			      config->common.sample_point);
 	if (err == -EINVAL) {
 		LOG_ERR("Can't find timing for given param");
@@ -1166,7 +1166,7 @@ static int mcux_flexcan_init(const struct device *dev)
 #ifdef CONFIG_CAN_MCUX_FLEXCAN_FD
 	if (config->flexcan_fd) {
 		err = can_calc_timing_data(dev, &data->timing_data,
-					   config->common.bus_speed_data,
+					   config->common.bitrate_data,
 					   config->common.sample_point_data);
 		if (err == -EINVAL) {
 			LOG_ERR("Can't find timing for given param");
@@ -1249,9 +1249,8 @@ static int mcux_flexcan_init(const struct device *dev)
 
 	config->irq_config_func(dev);
 
-#ifndef CONFIG_CAN_AUTO_BUS_OFF_RECOVERY
-	config->base->CTRL1 |= CAN_CTRL1_BOFFREC_MASK;
-#endif /* CONFIG_CAN_AUTO_BUS_OFF_RECOVERY */
+	/* Enable auto-recovery from bus-off */
+	config->base->CTRL1 &= ~(CAN_CTRL1_BOFFREC_MASK);
 
 	(void)mcux_flexcan_get_state(dev, &data->state, NULL);
 
@@ -1268,9 +1267,9 @@ __maybe_unused static const struct can_driver_api mcux_flexcan_driver_api = {
 	.add_rx_filter = mcux_flexcan_add_rx_filter,
 	.remove_rx_filter = mcux_flexcan_remove_rx_filter,
 	.get_state = mcux_flexcan_get_state,
-#ifndef CONFIG_CAN_AUTO_BUS_OFF_RECOVERY
+#ifdef CONFIG_CAN_MANUAL_RECOVERY_MODE
 	.recover = mcux_flexcan_recover,
-#endif
+#endif /* CONFIG_CAN_MANUAL_RECOVERY_MODE */
 	.set_state_change_callback = mcux_flexcan_set_state_change_callback,
 	.get_core_clock = mcux_flexcan_get_core_clock,
 	.get_max_filters = mcux_flexcan_get_max_filters,
@@ -1311,9 +1310,9 @@ static const struct can_driver_api mcux_flexcan_fd_driver_api = {
 	.add_rx_filter = mcux_flexcan_add_rx_filter,
 	.remove_rx_filter = mcux_flexcan_remove_rx_filter,
 	.get_state = mcux_flexcan_get_state,
-#ifndef CONFIG_CAN_AUTO_BUS_OFF_RECOVERY
+#ifdef CONFIG_CAN_MANUAL_RECOVERY_MODE
 	.recover = mcux_flexcan_recover,
-#endif
+#endif /* CONFIG_CAN_MANUAL_RECOVERY_MODE */
 	.set_state_change_callback = mcux_flexcan_set_state_change_callback,
 	.get_core_clock = mcux_flexcan_get_core_clock,
 	.get_max_filters = mcux_flexcan_get_max_filters,
@@ -1380,7 +1379,7 @@ static const struct can_driver_api mcux_flexcan_fd_driver_api = {
 
 #ifdef CONFIG_CAN_MCUX_FLEXCAN_FD
 #define FLEXCAN_MAX_BITRATE(id)							\
-	COND_CODE_1(DT_NODE_HAS_COMPAT(DT_DRV_INST(id), FLEXCAN_FD_DRV_COMPAT),	\
+	COND_CODE_1(DT_INST_NODE_HAS_COMPAT(id, FLEXCAN_FD_DRV_COMPAT),		\
 		    (8000000), (1000000))
 #else /* CONFIG_CAN_MCUX_FLEXCAN_FD */
 #define FLEXCAN_MAX_BITRATE(id) 1000000
@@ -1388,7 +1387,7 @@ static const struct can_driver_api mcux_flexcan_fd_driver_api = {
 
 #ifdef CONFIG_CAN_MCUX_FLEXCAN_FD
 #define FLEXCAN_DRIVER_API(id)							\
-	COND_CODE_1(DT_NODE_HAS_COMPAT(DT_DRV_INST(id), FLEXCAN_FD_DRV_COMPAT),	\
+	COND_CODE_1(DT_INST_NODE_HAS_COMPAT(id, FLEXCAN_FD_DRV_COMPAT),		\
 		    (mcux_flexcan_fd_driver_api),				\
 		    (mcux_flexcan_driver_api))
 #else /* CONFIG_CAN_MCUX_FLEXCAN_FD */
@@ -1403,14 +1402,14 @@ static const struct can_driver_api mcux_flexcan_fd_driver_api = {
 	static void mcux_flexcan_irq_disable_##id(void); \
 									\
 	static const struct mcux_flexcan_config mcux_flexcan_config_##id = { \
-		.common = CAN_DT_DRIVER_CONFIG_INST_GET(id, FLEXCAN_MAX_BITRATE(id)), \
+		.common = CAN_DT_DRIVER_CONFIG_INST_GET(id, 0, FLEXCAN_MAX_BITRATE(id)), \
 		.base = (CAN_Type *)DT_INST_REG_ADDR(id),		\
 		.clock_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(id)),	\
 		.clock_subsys = (clock_control_subsys_t)		\
 			DT_INST_CLOCKS_CELL(id, name),			\
 		.clk_source = DT_INST_PROP(id, clk_source),		\
 		IF_ENABLED(CONFIG_CAN_MCUX_FLEXCAN_FD, (		\
-			.flexcan_fd = DT_NODE_HAS_COMPAT(DT_DRV_INST(id), FLEXCAN_FD_DRV_COMPAT), \
+			.flexcan_fd = DT_INST_NODE_HAS_COMPAT(id, FLEXCAN_FD_DRV_COMPAT), \
 		))							\
 		.irq_config_func = mcux_flexcan_irq_config_##id,	\
 		.irq_enable_func = mcux_flexcan_irq_enable_##id,	\
