@@ -1,5 +1,6 @@
 /*
  * Copyright 2023 Google LLC
+ * SPDX-FileCopyrightText: Copyright (c) 2025 Carl Zeiss Meditec AG
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,50 +17,68 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(tcs3430, CONFIG_SENSOR_LOG_LEVEL);
 
-#define TCS3430_ENABLE_REG  0x80
-#define TCS3430_ENABLE_AIEN BIT(4)
-#define TCS3430_ENABLE_AEN  BIT(1)
-#define TCS3430_ENABLE_PON  BIT(0)
+#define TCS3430_ENABLE_REG  0x80   /* general on/off settings */
+#define TCS3430_ENABLE_WEN  BIT(3) /* enables or disables the wait feature */
+#define TCS3430_ENABLE_AEN  BIT(1) /* activates the ALS function */
+#define TCS3430_ENABLE_PON  BIT(0) /* activates the internal oscillator to allow operation */
 
-#define TCS3430_ATIME_REG 0x81
+#define TCS3430_ATIME_REG 0x81 /* controls integration time of ALS ADCs */
+#define TCS3430_WTIME_REG 0x83 /* controls wait timer */
+#define TCS3430_AILTL_REG 0x84 /* low byte of low interrupt sensor threshold */
+#define TCS3430_AILTH_REG 0x85 /* high byte of low interrupt sensor threshold */
+#define TCS3430_AIHTL_REG 0x86 /* low byte of high interrupt sensor threshold */
+#define TCS3430_AIHTH_REG 0x87 /* high byte of high interrupt sensor threshold */
 
-#define TCS3430_PERS_REG 0x8C
+#define TCS3430_PERS_REG 0x8C /* interrupt persistence filter */
 
-#define TCS3430_CONFIG_REG 0x8D
+#define TCS3430_CFG0_REG   0x8D   /* long wait control */
+#define TCS3430_CFG0_WLONG BIT(2) /* increases wait cycle by 12x if asserted */
 
-#define TCS3430_CONTROL_REG 0x8F
+#define TCS3430_CFG1_REG   0x90   /* gain & channel 3 control */
+#define TCS3430_CFG1_AMUX  BIT(3) /* configure X (0) or IR2 (1) as third channel */
 
-#define TCS3430_CFG1_REG 0x90
+#define TCS3430_REVID_REG   0x91 /* revision number identification */
 
 #define TCS3430_ID_REG 0x92
-#define TCS3430_ID     0xDC
+#define TCS3430_ID     0xDC /* part number TCS3430 */
 
-#define TCS3430_STATUS_REG    0x93
-#define TCS3430_STATUS_AVALID BIT(0)
+#define TCS3430_STATUS_REG  0x93   /* ALS status register */
+#define TCS3430_STATUS_ASAT BIT(7) /* ALS saturation */
+#define TCS3430_STATUS_AINT BIT(4) /* ALS interrupt */
 
-#define TCS3430_ZDATAL_REG  0x94
-#define TCS3430_ZDATAH_REG  0x95
-#define TCS3430_YDATAL_REG  0x96
-#define TCS3430_YDATAH_REG  0x97
-#define TCS3430_IRDATAL_REG 0x98
-#define TCS3430_IRDATAH_REG 0x99
-#define TCS3430_XDATAL_REG  0x9A
-#define TCS3430_XDATAH_REG  0x9B
-#define TCS3430_CFG2_REG    0x9F
+#define TCS3430_CH0DATAL_REG 0x94 /* low byte of CH0 ADC data (Z) */
+#define TCS3430_CH0DATAH_REG 0x95 /* high byte of CH0 ADC data (Z) */
+#define TCS3430_CH1DATAL_REG 0x96 /* low byte of CH1 ADC data (Y) */
+#define TCS3430_CH1DATAH_REG 0x97 /* high byte of CH1 ADC data (Y) */
+#define TCS3430_CH2DATAL_REG 0x98 /* low byte of CH2 ADC data (IR1) */
+#define TCS3430_CH2DATAH_REG 0x99 /* high byte of CH2 ADC data (IR1) */
+#define TCS3430_CH3DATAL_REG 0x9A /* low byte of CH3 ADC data (X/IR2 depending on CFG1_AMUX) */
+#define TCS3430_CH3DATAH_REG 0x9B /* high byte of CH3 ADC data (X/IR2 depending on CFG1_AMUX) */
 
-#define TCS3430_INTENAB_REG     0xDD
-#define TCS3430_DEFAULT_INTENAB 0x10
+#define TCS3430_CFG2_REG   0x9F   /* high gain control */
+#define TCS3430_CFG2_HGAIN BIT(4) /* high gain mode: 128x gain if CFG1_AGAIN=0x11 */
 
-#define TCS3430_AICLEAR_REG 0xE7
+#define TCS3430_CFG3_REG            0xAB   /* interrupt-related config */
+#define TCS3430_CFG3_INT_READ_CLEAR BIT(7) /* clear status register on read */
+#define TCS3430_CFG3_SAI            BIT(4) /* sleep after interrupt */
+
+#define TCS3430_AZ_CONFIG_REG     0xD6   /* auto-zero configuration */
+#define TCS3430_AZ_CONFIG_AZ_MODE BIT(7) /* auto-zero mode */
+
+#define TCS3430_INTENAB_REG     0xDD   /* interrupt enable */
+#define TCS3430_INTENAB_ASIEN   BIT(5) /* enable ASAT (sensor saturation) interrupt */
+#define TCS3430_INTENAB_AIEN    BIT(4) /* enable ALS interrupt */
 
 /* Default values */
-#define TCS3430_DEFAULT_ENABLE  0x00
-#define TCS3430_DEFAULT_ATIME   0xFF
-#define TCS3430_DEFAULT_PERS    0x00
-#define TCS3430_DEFAULT_CONFIG  0x80
-#define TCS3430_DEFAULT_CONTROL 0x00
-#define TCS3430_AICLEAR_RESET   0x00
-#define TCS3430_DEFAULT_CFG2    0x08
+#define TCS3430_DEFAULT_ENABLE    (TCS3430_ENABLE_AEN | TCS3430_ENABLE_PON)
+#define TCS3430_DEFAULT_ATIME     0xFF /* maximum integration time */
+#define TCS3430_DEFAULT_PERS      0x00 /* interrupt persistence filter off */
+#define TCS3430_DEFAULT_CFG0      0x80 /* must be set to 0x80 according to data sheet */
+#define TCS3430_DEFAULT_CFG1      0x00 /* CH3 to X, gain to 1x */
+#define TCS3430_DEFAULT_CFG2      0x04 /* high gain mode off */
+#define TCS3430_DEFAULT_CFG3      0x0C /* sleep after interrupt OFF */
+#define TCS3430_DEFAULT_AZ_CONFIG 0x7F /* auto-zero at first ALS cycle */
+#define TCS3430_DEFAULT_INTENAB   0x00 /* interrupts off */
 
 struct tcs3430_config {
 	struct i2c_dt_spec i2c;
@@ -77,21 +96,6 @@ struct tcs3430_data {
 	struct k_sem data_sem;
 };
 
-static void tcs3430_setup_int(const struct tcs3430_config *config, bool enable)
-{
-	unsigned int flags = enable ? GPIO_INT_EDGE_TO_ACTIVE : GPIO_INT_DISABLE;
-	gpio_pin_interrupt_configure_dt(&config->int_gpio, flags);
-}
-
-static void tcs3430_gpio_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
-{
-	struct tcs3430_data *data = CONTAINER_OF(cb, struct tcs3430_data, gpio_cb);
-
-	tcs3430_setup_int(data->dev->config, false);
-
-	k_sem_give(&data->data_sem);
-}
-
 static int tcs3430_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	const struct tcs3430_config *cfg = dev->config;
@@ -106,45 +110,21 @@ static int tcs3430_sample_fetch(const struct device *dev, enum sensor_channel ch
 		return -ENOTSUP;
 	}
 
-	tcs3430_setup_int(cfg, true);
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_ENABLE_REG,
-				    TCS3430_ENABLE_AEN | TCS3430_ENABLE_PON);
-	if (ret) {
-		return ret;
-	}
-
-	if (k_sem_take(&data->data_sem, K_SECONDS(1)) != 0) {
-		LOG_INF("semaphore waiting timeout");
-	}
-
 	ret = i2c_reg_read_byte_dt(&cfg->i2c, TCS3430_STATUS_REG, &status);
 	if (ret) {
 		return ret;
 	}
 
-	status = 1;
-	if (status & TCS3430_STATUS_AVALID) {
-		ret = i2c_burst_read_dt(&cfg->i2c, TCS3430_ZDATAL_REG,
-					(uint8_t *)&data->sample_zycx, sizeof(data->sample_zycx));
-		if (ret) {
-			return ret;
+	if (status & TCS3430_STATUS_ASAT) {
+		LOG_ERR("ALS saturated!");
+		ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_STATUS_REG, TCS3430_STATUS_ASAT);
+		if (ret != 0) {
+			LOG_ERR("Couldn't clear ASAT: %d", ret);
 		}
-	} else {
-		LOG_ERR("Unexpected status: %02x", status);
 	}
 
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_ENABLE_REG, 0);
-	if (ret) {
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_AICLEAR_REG, 0);
-	if (ret) {
-		return ret;
-	}
-
-	ret = i2c_reg_write_byte_dt(&cfg->i2c, TCS3430_STATUS_REG, 0x94);
+	ret = i2c_burst_read_dt(&cfg->i2c, TCS3430_CH0DATAL_REG,
+				(uint8_t *)&data->sample_zycx, sizeof(data->sample_zycx));
 	if (ret) {
 		return ret;
 	}
@@ -233,25 +213,25 @@ static int tcs3430_sensor_setup(const struct device *dev)
 		uint8_t reg_addr;
 		uint8_t value;
 	} reset_regs[] = {
-		{TCS3430_ENABLE_REG, TCS3430_DEFAULT_ENABLE},
-		{TCS3430_AICLEAR_REG, TCS3430_AICLEAR_RESET},
 		{TCS3430_ATIME_REG, atime_default},
 		{TCS3430_PERS_REG, TCS3430_DEFAULT_PERS},
-		{TCS3430_CONFIG_REG, TCS3430_DEFAULT_CONFIG},
-		{TCS3430_CONTROL_REG, TCS3430_DEFAULT_CONTROL},
+		{TCS3430_CFG0_REG, TCS3430_DEFAULT_CFG0},
 		{TCS3430_INTENAB_REG, TCS3430_DEFAULT_INTENAB},
 		{TCS3430_CFG1_REG, cfg->gain},
 		{TCS3430_CFG2_REG, TCS3430_DEFAULT_CFG2},
+		{TCS3430_CFG3_REG, TCS3430_DEFAULT_CFG3},
+		{TCS3430_AZ_CONFIG_REG, TCS3430_DEFAULT_AZ_CONFIG},
+		{TCS3430_ENABLE_REG, TCS3430_DEFAULT_ENABLE},
 	};
 
 	ret = i2c_reg_read_byte_dt(&cfg->i2c, TCS3430_ID_REG, &chip_id);
 	if (ret) {
-		LOG_DBG("Failed to read chip id: %d", ret);
+		LOG_ERR("Failed to read chip id: %d", ret);
 		return ret;
 	}
 
-	if (!(chip_id == TCS3430_ID)) {
-		LOG_DBG("Invalid chip id: %02x", chip_id);
+	if (chip_id != TCS3430_ID) {
+		LOG_ERR("Invalid chip id: %02x", chip_id);
 		return -EIO;
 	}
 
@@ -291,25 +271,6 @@ static int tcs3430_init(const struct device *dev)
 	ret = tcs3430_sensor_setup(dev);
 	if (ret < 0) {
 		LOG_ERR("Failed to setup device: %d", ret);
-		return ret;
-	}
-
-	if (!gpio_is_ready_dt(&cfg->int_gpio)) {
-		LOG_ERR("Interrupt GPIO device not ready");
-		return -ENODEV;
-	}
-
-	ret = gpio_pin_configure_dt(&cfg->int_gpio, GPIO_INPUT);
-	if (ret < 0) {
-		LOG_ERR("Failed to configure interrupt pin");
-		return ret;
-	}
-
-	gpio_init_callback(&data->gpio_cb, tcs3430_gpio_callback, BIT(cfg->int_gpio.pin));
-
-	ret = gpio_add_callback(cfg->int_gpio.port, &data->gpio_cb);
-	if (ret < 0) {
-		LOG_ERR("Failed to set GPIO callback");
 		return ret;
 	}
 
