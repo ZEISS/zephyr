@@ -57,8 +57,10 @@ static int ism330dhcx_spi_write(const struct device *dev, uint8_t reg_addr, uint
 		return -EIO;
 	}
 
+	// copy the values to write to cmd buffer.
+	// cmd[0] is the register address and shouldn't be overwritten.
 	for (uint8_t i = 0; i < len; i++) {
-		cmd[i] = value[i];
+		cmd[i+1] = value[i];
 	}
 
 	const struct spi_buf tx_buf = {.buf = cmd, .len = len + 1};
