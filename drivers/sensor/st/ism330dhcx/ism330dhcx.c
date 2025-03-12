@@ -183,6 +183,55 @@ static int ism330dhcx_accel_odr_set(const struct device *dev, uint16_t freq)
 	return 0;
 }
 
+int32_t ism330hdcx_accel_offsets_set(const struct device *dev, enum sensor_channel chan,
+				   const struct sensor_value *val)
+{
+	int32_t status = 0;
+	struct ism330dhcx_data *data = dev->data;
+
+	// convert val from m/s² into offset register value
+	// in g with resolution 2^-10g/LSB
+	int32_t offset_ug = sensor_ms2_to_ug(val);
+	int32_t round_value = 500000;
+	if(offset_ug < 0) {
+		round_value = -500000;
+	}
+	int8_t offset_reg_value = (int8_t)(((offset_ug * 1024) + round_value) / 1000000);
+
+	if(SENSOR_CHAN_ACCEL_X == chan) {
+		status = ism330dhcx_xl_usr_offset_x_set(data->ctx, (uint8_t*)&offset_reg_value);
+	}
+	else if(SENSOR_CHAN_ACCEL_Y == chan) {
+		status = ism330dhcx_xl_usr_offset_y_set(data->ctx, (uint8_t*)&offset_reg_value);
+	}
+	else {
+		status = -EIO;
+	}
+	return status;
+}
+
+int32_t ism330hdcx_accel_offsets_get(const struct device *dev,
+				 enum sensor_channel chan,
+				 enum sensor_attribute attr,
+				 struct sensor_value *val)
+{
+	int32_t status = 0;
+	struct ism330dhcx_data *data = dev->data;
+	int8_t offset_reg = 0;
+	if(SENSOR_CHAN_ACCEL_X == chan) {
+		status = ism330dhcx_xl_usr_offset_x_get(data->ctx, (uint8_t*)&offset_reg);
+	}
+	else if(SENSOR_CHAN_ACCEL_Y == chan) {
+		status = ism330dhcx_xl_usr_offset_y_get(data->ctx, (uint8_t*)&offset_reg);
+	}
+
+	// convert offset from register value in g with resolution 2^-10g/LSB
+	// into m/s²
+	int32_t offset = (offset_reg * 1000000) / 1024;
+	sensor_ug_to_ms2(offset, val);
+	return status;
+}
+
 static int ism330dhcx_accel_range_set(const struct device *dev, int32_t range)
 {
 	int fs;
@@ -212,6 +261,8 @@ static int ism330dhcx_accel_config(const struct device *dev,
 		return ism330dhcx_accel_range_set(dev, sensor_ms2_to_g(val));
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
 		return ism330dhcx_accel_odr_set(dev, val->val1);
+	case SENSOR_ATTR_OFFSET:
+		return ism330hdcx_accel_offsets_set(dev, chan, val);
 	default:
 		LOG_DBG("Accel attribute not supported.");
 		return -ENOTSUP;
@@ -280,6 +331,10 @@ static int ism330dhcx_attr_set(const struct device *dev,
 			       const struct sensor_value *val)
 {
 	switch (chan) {
+	case SENSOR_CHAN_ACCEL_X:
+		return ism330dhcx_accel_config(dev, chan, attr, val);
+	case SENSOR_CHAN_ACCEL_Y:
+		return ism330dhcx_accel_config(dev, chan, attr, val);
 	case SENSOR_CHAN_ACCEL_XYZ:
 		return ism330dhcx_accel_config(dev, chan, attr, val);
 	case SENSOR_CHAN_GYRO_XYZ:
@@ -290,6 +345,24 @@ static int ism330dhcx_attr_set(const struct device *dev,
 	case SENSOR_CHAN_HUMIDITY:
 		return ism330dhcx_shub_config(dev, chan, attr, val);
 #endif /* CONFIG_ISM330DHCX_SENSORHUB */
+	default:
+		LOG_WRN("attr_set() not supported on this channel.");
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
+static int ism330dhcx_attr_get(const struct device *dev,
+				 enum sensor_channel chan,
+				 enum sensor_attribute attr,
+				 struct sensor_value *val)
+{
+	switch (chan) {
+	case SENSOR_CHAN_ACCEL_X:
+		return ism330hdcx_accel_offsets_get(dev, chan, attr, val);
+	case SENSOR_CHAN_ACCEL_Y:
+		return ism330hdcx_accel_offsets_get(dev, chan, attr, val);
 	default:
 		LOG_WRN("attr_set() not supported on this channel.");
 		return -ENOTSUP;
@@ -679,6 +752,7 @@ static int ism330dhcx_channel_get(const struct device *dev,
 
 static const struct sensor_driver_api ism330dhcx_api_funcs = {
 	.attr_set = ism330dhcx_attr_set,
+	.attr_get = ism330dhcx_attr_get,
 #if CONFIG_ISM330DHCX_TRIGGER
 	.trigger_set = ism330dhcx_trigger_set,
 #endif
@@ -744,8 +818,14 @@ static int ism330dhcx_init_chip(const struct device *dev)
 		return -EIO;
 	}
 
-	if (ism330dhcx_block_data_update_set(ism330dhcx->ctx, 1) < 0) {
+	if (ism330dhcx_block_data_update_set(ism330dhcx->ctx, 0) < 0) {
 		LOG_DBG("failed to set BDU mode");
+		return -EIO;
+	}
+
+	LOG_DBG("enable offset correction");
+	if (ism330dhcx_xl_usr_offset_set(ism330dhcx->ctx, 1u) < 0) {
+		LOG_DBG("failed to set offset correction enable");
 		return -EIO;
 	}
 
