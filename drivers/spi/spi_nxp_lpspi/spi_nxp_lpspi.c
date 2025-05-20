@@ -262,6 +262,14 @@ static void lpspi_isr(const struct device *dev)
 		return;
 	}
 
+	if ((spi_context_rx_len_left(ctx) == 1) &&
+		(((base->VERID & LPSPI_VERID_MAJOR_MASK) >> LPSPI_VERID_MAJOR_SHIFT) < 2)) {
+		/* Due to stalling behavior on older LPSPI,
+		 * need to end xfer in order to get last bit clocked out on bus.
+		 */
+		base->TCR &= ~LPSPI_TCR_CONT_MASK;
+	}
+
 	if (spi_context_rx_on(ctx)) {
 		size_t rx_fifo_len = rx_fifo_cur_len(base);
 		size_t expected_rx_left = rx_fifo_len < ctx->rx_len ? ctx->rx_len - rx_fifo_len : 0;
@@ -273,14 +281,6 @@ static void lpspi_isr(const struct device *dev)
 
 		lpspi_fill_tx_fifo_nop(dev, fill_len);
 		lpspi_data->fill_len = fill_len;
-	}
-
-	if ((DIV_ROUND_UP(spi_context_rx_len_left(ctx, word_size_bytes), word_size_bytes) == 1) &&
-	    (LPSPI_VERID_MAJOR(base->VERID) < 2)) {
-		/* Due to stalling behavior on older LPSPI,
-		 * need to end xfer in order to get last bit clocked out on bus.
-		 */
-		base->TCR |= LPSPI_TCR_CONT_MASK;
 	}
 
 	/* Both receive and transmit parts disable their interrupt once finished. */
