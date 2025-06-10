@@ -1,0 +1,11 @@
+# Copyright 2023 Google LLC
+# SPDX-FileCopyrightText: Copyright (c) 2025 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+config TCS3430
+	bool "TCS3430 Sensor"
+	default y
+	depends on DT_HAS_AMS_TCS3430_ENABLED
+	select I2C
+	help
+	  Enable driver for TCS3430 sensors.
