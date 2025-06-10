@@ -1,0 +1,31 @@
+# Copyright 2023 Google LLC
+# SPDX-FileCopyrightText: Copyright (c) 2025 Carl Zeiss Meditec AG
+# SPDX-License-Identifier: Apache-2.0
+
+description: AMS TCS3430 Ambient Light Sensor
+
+compatible: "ams,tcs3430"
+
+include: [sensor-device.yaml, i2c-device.yaml]
+
+properties:
+  int-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      INT pin GPIO identifier, open-drain, active low.
+  integration-cycles:
+    type: int
+    default: 256
+    description: |
+      Initial ADC integration cycle setting from 1 to 256.
+      1 cycle = 2.78ms.
+  gain:
+    type: int
+    default: 0
+    description: |
+      ALS Gain Control:
+      0 - 1x
+      1 - 4x
+      2 - 16x
+      3 - 64x
