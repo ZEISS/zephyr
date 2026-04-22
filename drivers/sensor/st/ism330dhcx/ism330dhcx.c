@@ -175,24 +175,33 @@ int32_t ism330hdcx_accel_offsets_set(const struct device *dev, enum sensor_chann
 	int32_t status = 0;
 	struct ism330dhcx_data *data = dev->data;
 
-	// convert val from m/s² into offset register value
-	// in g with resolution 2^-10g/LSB
-	int32_t offset_ug = sensor_ms2_to_ug(val);
-	int32_t round_value = 500000;
-	if(offset_ug < 0) {
-		round_value = -500000;
-	}
-	int8_t offset_reg_value = (int8_t)(((offset_ug * 1024) + round_value) / 1000000);
+	/* Convert val from m/s² into offset register value
+	 * in g with resolution 2^-10g/LSB
+	 */
+	const int32_t offset_ug = sensor_ms2_to_ug(val);
 
-	if(SENSOR_CHAN_ACCEL_X == chan) {
-		status = ism330dhcx_xl_usr_offset_x_set(data->ctx, (uint8_t*)&offset_reg_value);
+	/* Check that offset is in range */
+	static const int32_t offset_min_ug = (-127 * 1000000) / 1024;
+	static const int32_t offset_max_ug = (127 * 1000000) / 1024;
+
+	if (!IN_RANGE(offset_ug, offset_min_ug, offset_max_ug)) {
+		LOG_ERR("offset value %d out of range", offset_ug);
+		return -EINVAL;
 	}
-	else if(SENSOR_CHAN_ACCEL_Y == chan) {
-		status = ism330dhcx_xl_usr_offset_y_set(data->ctx, (uint8_t*)&offset_reg_value);
-	}
-	else {
+
+	const int32_t round_value = (offset_ug < 0) ? -500000 : 500000;
+	const int8_t offset_reg_value = (int8_t)(((offset_ug * 1024) + round_value) / 1000000);
+
+	if (chan == SENSOR_CHAN_ACCEL_X) {
+		status = ism330dhcx_xl_usr_offset_x_set(data->ctx, (uint8_t *)&offset_reg_value);
+	} else if (chan == SENSOR_CHAN_ACCEL_Y) {
+		status = ism330dhcx_xl_usr_offset_y_set(data->ctx, (uint8_t *)&offset_reg_value);
+	} else if (chan == SENSOR_CHAN_ACCEL_Z) {
+		status = ism330dhcx_xl_usr_offset_z_set(data->ctx, (uint8_t *)&offset_reg_value);
+	} else {
 		status = -EIO;
 	}
+
 	return status;
 }
 
@@ -204,17 +213,26 @@ int32_t ism330hdcx_accel_offsets_get(const struct device *dev,
 	int32_t status = 0;
 	struct ism330dhcx_data *data = dev->data;
 	int8_t offset_reg = 0;
-	if(SENSOR_CHAN_ACCEL_X == chan) {
-		status = ism330dhcx_xl_usr_offset_x_get(data->ctx, (uint8_t*)&offset_reg);
-	}
-	else if(SENSOR_CHAN_ACCEL_Y == chan) {
-		status = ism330dhcx_xl_usr_offset_y_get(data->ctx, (uint8_t*)&offset_reg);
+
+	if (chan == SENSOR_CHAN_ACCEL_X) {
+		status = ism330dhcx_xl_usr_offset_x_get(data->ctx, (uint8_t *)&offset_reg);
+	} else if (chan == SENSOR_CHAN_ACCEL_Y) {
+		status = ism330dhcx_xl_usr_offset_y_get(data->ctx, (uint8_t *)&offset_reg);
+	} else if (chan == SENSOR_CHAN_ACCEL_Z) {
+		status = ism330dhcx_xl_usr_offset_z_get(data->ctx, (uint8_t *)&offset_reg);
+	} else {
+		status = -EINVAL;
 	}
 
-	// convert offset from register value in g with resolution 2^-10g/LSB
-	// into m/s²
-	int32_t offset = (offset_reg * 1000000) / 1024;
-	sensor_ug_to_ms2(offset, val);
+	/* Convert offset from register value in g with resolution 2^-10g/LSB
+	 * into m/s²
+	 */
+	if (status == 0) {
+		const int32_t offset_ug = (offset_reg * 1000000) / 1024;
+
+		sensor_ug_to_ms2(offset_ug, val);
+	}
+
 	return status;
 }
 
@@ -321,6 +339,8 @@ static int ism330dhcx_attr_set(const struct device *dev,
 		return ism330dhcx_accel_config(dev, chan, attr, val);
 	case SENSOR_CHAN_ACCEL_Y:
 		return ism330dhcx_accel_config(dev, chan, attr, val);
+	case SENSOR_CHAN_ACCEL_Z:
+		return ism330dhcx_accel_config(dev, chan, attr, val);
 	case SENSOR_CHAN_ACCEL_XYZ:
 		return ism330dhcx_accel_config(dev, chan, attr, val);
 	case SENSOR_CHAN_GYRO_XYZ:
@@ -349,8 +369,10 @@ static int ism330dhcx_attr_get(const struct device *dev,
 		return ism330hdcx_accel_offsets_get(dev, chan, attr, val);
 	case SENSOR_CHAN_ACCEL_Y:
 		return ism330hdcx_accel_offsets_get(dev, chan, attr, val);
+	case SENSOR_CHAN_ACCEL_Z:
+		return ism330hdcx_accel_offsets_get(dev, chan, attr, val);
 	default:
-		LOG_WRN("attr_set() not supported on this channel.");
+		LOG_WRN("attr_get() not supported on this channel.");
 		return -ENOTSUP;
 	}
 
